@@ -1,12 +1,15 @@
 import { useState, useEffect } from "react";
 import { VideoUpload } from "@/components/VideoUpload";
+import { VideoRecorder } from "@/components/VideoRecorder";
 import { AnalysisProgress } from "@/components/AnalysisProgress";
 import { AssessmentReport } from "@/components/AssessmentReport";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Award, Sparkles } from "lucide-react";
+import { Award, Sparkles, Upload, Video, ChevronLeft, Shield, Clock, BarChart3, BookOpen, MessageSquare, Eye } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
-type ViewState = "upload" | "analyzing" | "report";
+type ViewState = "home" | "upload" | "record" | "analyzing" | "report";
 
 interface Assessment {
   id: string;
@@ -23,7 +26,7 @@ interface Assessment {
 }
 
 export default function Index() {
-  const [view, setView] = useState<ViewState>("upload");
+  const [view, setView] = useState<ViewState>("home");
   const [isUploading, setIsUploading] = useState(false);
   const [analysisStatus, setAnalysisStatus] = useState("uploading");
   const [assessment, setAssessment] = useState<Assessment | null>(null);
@@ -60,7 +63,7 @@ export default function Index() {
           toast.error("Analysis failed", {
             description: data.error_message || "Please try again.",
           });
-          setView("upload");
+          setView("home");
         }
       }
     }, 3000);
@@ -68,7 +71,7 @@ export default function Index() {
     return () => clearInterval(pollInterval);
   }, [assessmentId, view]);
 
-  const handleVideoSelect = async (file: File) => {
+  const processVideo = async (file: File) => {
     setIsUploading(true);
     setAnalysisStatus("uploading");
 
@@ -127,16 +130,35 @@ export default function Index() {
       toast.error("Upload failed", {
         description: error instanceof Error ? error.message : "Please try again.",
       });
-      setView("upload");
+      setView("home");
     } finally {
       setIsUploading(false);
     }
   };
 
+  const handleVideoSelect = async (file: File) => {
+    await processVideo(file);
+  };
+
+  const handleVideoRecorded = async (file: File) => {
+    await processVideo(file);
+  };
+
   const handleNewAssessment = () => {
     setAssessment(null);
     setAssessmentId(null);
-    setView("upload");
+    setView("home");
+  };
+
+  const handleBack = () => {
+    if (view === "upload" || view === "record") {
+      setView("home");
+    } else if (view === "analyzing") {
+      // Can't go back during analysis
+      toast.info("Please wait for analysis to complete");
+    } else if (view === "report") {
+      setView("home");
+    }
   };
 
   return (
@@ -145,6 +167,16 @@ export default function Index() {
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
+            {view !== "home" && view !== "analyzing" && (
+              <Button
+                onClick={handleBack}
+                variant="ghost"
+                size="icon"
+                className="mr-2"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </Button>
+            )}
             <div className="w-10 h-10 rounded-xl bg-gradient-accent flex items-center justify-center shadow-md">
               <Award className="w-5 h-5 text-accent-foreground" />
             </div>
@@ -169,63 +201,195 @@ export default function Index() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8 sm:py-12">
-        {view === "upload" && (
-          <div className="max-w-2xl mx-auto space-y-8">
+        {/* Home / Landing View */}
+        {view === "home" && (
+          <div className="max-w-3xl mx-auto space-y-10">
             {/* Hero Section */}
             <div className="text-center space-y-4 animate-fade-in">
               <div className="inline-flex items-center gap-2 px-4 py-2 bg-accent/10 rounded-full text-accent text-sm font-medium">
                 <Sparkles className="w-4 h-4" />
-                AI-Powered Analysis
+                AI-Powered Analysis with Research Backing
               </div>
               <h1 className="font-display text-4xl sm:text-5xl font-bold text-foreground leading-tight">
                 Assess Your
                 <span className="block text-gradient">Executive Presence</span>
               </h1>
               <p className="text-lg text-muted-foreground max-w-xl mx-auto">
-                Upload a 3-minute video and receive detailed feedback on your 
+                Upload or record a 3-minute video and receive detailed, research-backed feedback on your 
                 communication, appearance, and storytelling skills.
               </p>
             </div>
 
-            {/* Upload Component */}
-            <VideoUpload 
-              onVideoSelect={handleVideoSelect} 
-              isUploading={isUploading} 
-            />
+            {/* Input Method Selection */}
+            <div className="grid sm:grid-cols-2 gap-4 animate-slide-up">
+              <button
+                onClick={() => setView("upload")}
+                className={cn(
+                  "p-6 border border-border rounded-2xl bg-card hover:bg-muted/30 transition-all",
+                  "flex flex-col items-center gap-4 text-center group hover:border-primary/50 hover:shadow-lg"
+                )}
+              >
+                <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                  <Upload className="w-8 h-8 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-display text-lg font-semibold text-foreground mb-1">
+                    Upload Video
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Upload an existing video file (MP4, MOV, WebM)
+                  </p>
+                </div>
+              </button>
 
-            {/* Features */}
-            <div className="grid grid-cols-3 gap-4 pt-8 border-t border-border">
-              <div className="text-center">
-                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-3">
-                  <span className="text-2xl">🎯</span>
+              <button
+                onClick={() => setView("record")}
+                className={cn(
+                  "p-6 border border-border rounded-2xl bg-card hover:bg-muted/30 transition-all",
+                  "flex flex-col items-center gap-4 text-center group hover:border-accent/50 hover:shadow-lg"
+                )}
+              >
+                <div className="w-16 h-16 rounded-2xl bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
+                  <Video className="w-8 h-8 text-accent" />
                 </div>
-                <h3 className="font-medium text-sm text-foreground">Communication</h3>
-                <p className="text-xs text-muted-foreground mt-1">Voice, clarity, confidence</p>
+                <div>
+                  <h3 className="font-display text-lg font-semibold text-foreground mb-1">
+                    Record Now
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Record directly using your camera and microphone
+                  </p>
+                </div>
+              </button>
+            </div>
+
+            {/* Assessment Dimensions */}
+            <div className="bg-gradient-card border border-border rounded-2xl p-6 animate-slide-up">
+              <h2 className="font-display text-xl font-semibold text-foreground mb-6 text-center">
+                What We Analyze
+              </h2>
+              <div className="grid sm:grid-cols-3 gap-6">
+                <div className="text-center">
+                  <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-3">
+                    <MessageSquare className="w-7 h-7 text-primary" />
+                  </div>
+                  <h3 className="font-medium text-foreground mb-1">Communication</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Speaking rate, vocal variety, filler words, pauses, confidence language
+                  </p>
+                  <span className="inline-block mt-2 text-xs font-medium text-primary/70 bg-primary/10 px-2 py-0.5 rounded">
+                    40% weight
+                  </span>
+                </div>
+                <div className="text-center">
+                  <div className="w-14 h-14 rounded-xl bg-accent/10 flex items-center justify-center mx-auto mb-3">
+                    <Eye className="w-7 h-7 text-accent" />
+                  </div>
+                  <h3 className="font-medium text-foreground mb-1">Presence & Nonverbal</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Presence projection, engagement cues, first impression, energy
+                  </p>
+                  <span className="inline-block mt-2 text-xs font-medium text-accent/70 bg-accent/10 px-2 py-0.5 rounded">
+                    35% weight
+                  </span>
+                </div>
+                <div className="text-center">
+                  <div className="w-14 h-14 rounded-xl bg-success/10 flex items-center justify-center mx-auto mb-3">
+                    <BookOpen className="w-7 h-7 text-success" />
+                  </div>
+                  <h3 className="font-medium text-foreground mb-1">Storytelling</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Narrative structure, flow, authenticity, memorability, pacing
+                  </p>
+                  <span className="inline-block mt-2 text-xs font-medium text-success/70 bg-success/10 px-2 py-0.5 rounded">
+                    25% weight
+                  </span>
+                </div>
               </div>
-              <div className="text-center">
-                <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center mx-auto mb-3">
-                  <span className="text-2xl">👁️</span>
-                </div>
-                <h3 className="font-medium text-sm text-foreground">Presence</h3>
-                <p className="text-xs text-muted-foreground mt-1">Energy, engagement, impact</p>
+            </div>
+
+            {/* Trust Indicators */}
+            <div className="grid sm:grid-cols-3 gap-4 text-center animate-slide-up">
+              <div className="flex flex-col items-center gap-2 p-4">
+                <Shield className="w-6 h-6 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Research-Backed Analysis</span>
               </div>
-              <div className="text-center">
-                <div className="w-12 h-12 rounded-xl bg-success/10 flex items-center justify-center mx-auto mb-3">
-                  <span className="text-2xl">📖</span>
-                </div>
-                <h3 className="font-medium text-sm text-foreground">Storytelling</h3>
-                <p className="text-xs text-muted-foreground mt-1">Narrative, memorability</p>
+              <div className="flex flex-col items-center gap-2 p-4">
+                <Clock className="w-6 h-6 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Results in 2-3 Minutes</span>
+              </div>
+              <div className="flex flex-col items-center gap-2 p-4">
+                <BarChart3 className="w-6 h-6 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Detailed Parameter Scores</span>
               </div>
             </div>
           </div>
         )}
 
+        {/* Upload View */}
+        {view === "upload" && (
+          <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
+            <div className="text-center space-y-2">
+              <h2 className="font-display text-2xl font-bold text-foreground">
+                Upload Your Video
+              </h2>
+              <p className="text-muted-foreground">
+                Select a video file to analyze your executive presence
+              </p>
+            </div>
+            <VideoUpload 
+              onVideoSelect={handleVideoSelect} 
+              isUploading={isUploading} 
+            />
+          </div>
+        )}
+
+        {/* Record View */}
+        {view === "record" && (
+          <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
+            <div className="text-center space-y-2">
+              <h2 className="font-display text-2xl font-bold text-foreground">
+                Record Your Video
+              </h2>
+              <p className="text-muted-foreground">
+                Position yourself with face and upper torso visible, then record for ~3 minutes
+              </p>
+            </div>
+            
+            {/* Recording Instructions */}
+            <div className="bg-gradient-card rounded-xl p-5 border border-border">
+              <h3 className="font-semibold text-foreground mb-3">Recording Structure (3 minutes)</h3>
+              <ul className="space-y-2 text-sm">
+                <li className="flex items-start gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-accent/20 text-accent flex items-center justify-center text-xs font-medium">1</span>
+                  <span><strong>Intro & Role</strong> — Introduce yourself and your position (30-40s)</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-accent/20 text-accent flex items-center justify-center text-xs font-medium">2</span>
+                  <span><strong>Key Initiative</strong> — Describe an initiative you're leading (60-90s)</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-accent/20 text-accent flex items-center justify-center text-xs font-medium">3</span>
+                  <span><strong>Leadership Story</strong> — Share a challenge you overcame (60-90s)</span>
+                </li>
+              </ul>
+            </div>
+
+            <VideoRecorder 
+              onVideoRecorded={handleVideoRecorded}
+              onCancel={() => setView("home")}
+            />
+          </div>
+        )}
+
+        {/* Analyzing View */}
         {view === "analyzing" && (
           <div className="py-12">
             <AnalysisProgress status={analysisStatus} />
           </div>
         )}
 
+        {/* Report View */}
         {view === "report" && assessment && (
           <AssessmentReport 
             assessment={assessment} 
@@ -236,9 +400,12 @@ export default function Index() {
 
       {/* Footer */}
       <footer className="border-t border-border py-6 mt-12">
-        <div className="container mx-auto px-4 text-center">
+        <div className="container mx-auto px-4 text-center space-y-2">
           <p className="text-sm text-muted-foreground">
-            Powered by OpenAI • Results in 2-3 minutes
+            Powered by OpenAI GPT-4o & Whisper • Research-backed analysis
+          </p>
+          <p className="text-xs text-muted-foreground/60">
+            References: Carmine Gallo, Amy Cuddy, Nancy Duarte, Toastmasters International
           </p>
         </div>
       </footer>
