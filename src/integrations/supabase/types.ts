@@ -14,7 +14,63 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      assessments: {
+        Row: {
+          appearance_analysis: Json | null
+          appearance_score: number | null
+          communication_analysis: Json | null
+          communication_score: number | null
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          overall_score: number | null
+          status: string
+          storytelling_analysis: Json | null
+          storytelling_score: number | null
+          transcript: string | null
+          video_duration_seconds: number | null
+          video_path: string | null
+          video_url: string | null
+        }
+        Insert: {
+          appearance_analysis?: Json | null
+          appearance_score?: number | null
+          communication_analysis?: Json | null
+          communication_score?: number | null
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          overall_score?: number | null
+          status?: string
+          storytelling_analysis?: Json | null
+          storytelling_score?: number | null
+          transcript?: string | null
+          video_duration_seconds?: number | null
+          video_path?: string | null
+          video_url?: string | null
+        }
+        Update: {
+          appearance_analysis?: Json | null
+          appearance_score?: number | null
+          communication_analysis?: Json | null
+          communication_score?: number | null
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          overall_score?: number | null
+          status?: string
+          storytelling_analysis?: Json | null
+          storytelling_score?: number | null
+          transcript?: string | null
+          video_duration_seconds?: number | null
+          video_path?: string | null
+          video_url?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
