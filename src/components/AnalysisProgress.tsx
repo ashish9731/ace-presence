@@ -1,35 +1,75 @@
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
-import { Mic, Video, Brain, FileText, CheckCircle } from "lucide-react";
+import { Mic, Video, Brain, FileText, CheckCircle, Sparkles, BarChart3 } from "lucide-react";
 
 interface AnalysisProgressProps {
   status: string;
 }
 
 const stages = [
-  { id: "uploading", label: "Uploading Video", icon: Video },
-  { id: "processing", label: "Processing Audio", icon: Mic },
-  { id: "analyzing", label: "AI Analysis", icon: Brain },
-  { id: "generating", label: "Generating Report", icon: FileText },
+  { 
+    id: "uploading", 
+    label: "Uploading Video", 
+    icon: Video,
+    description: "Securely uploading your video file..."
+  },
+  { 
+    id: "processing", 
+    label: "Processing Audio", 
+    icon: Mic,
+    description: "Extracting audio with OpenAI Whisper..."
+  },
+  { 
+    id: "analyzing", 
+    label: "AI Analysis", 
+    icon: Brain,
+    description: "Analyzing communication, presence, and storytelling..."
+  },
+  { 
+    id: "scoring", 
+    label: "Calculating Scores", 
+    icon: BarChart3,
+    description: "Computing research-backed metrics..."
+  },
+  { 
+    id: "generating", 
+    label: "Generating Report", 
+    icon: FileText,
+    description: "Creating personalized coaching feedback..."
+  },
+];
+
+const analysisDetails = [
+  "📊 Calculating speaking rate (WPM) against 140-160 optimal range",
+  "🎯 Detecting filler words using Toastmasters benchmarks",
+  "💪 Analyzing confidence vs hedging language patterns",
+  "⏸️ Measuring strategic pause frequency and duration",
+  "📖 Identifying narrative structure and story elements",
+  "🎭 Evaluating first impression impact (first 40 seconds)",
+  "✨ Applying research from Gallo, Cuddy, Duarte, and more",
 ];
 
 export function AnalysisProgress({ status }: AnalysisProgressProps) {
   const [currentStage, setCurrentStage] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [currentDetail, setCurrentDetail] = useState(0);
 
   useEffect(() => {
     // Map status to stage
     if (status === "uploading") {
       setCurrentStage(0);
-      setProgress(15);
+      setProgress(10);
     } else if (status === "processing") {
       setCurrentStage(1);
-      setProgress(35);
+      setProgress(25);
     } else if (status === "analyzing") {
       setCurrentStage(2);
-      setProgress(65);
-    } else if (status === "generating" || status === "completed") {
+      setProgress(50);
+    } else if (status === "scoring") {
       setCurrentStage(3);
+      setProgress(75);
+    } else if (status === "generating" || status === "completed") {
+      setCurrentStage(4);
       setProgress(status === "completed" ? 100 : 90);
     }
   }, [status]);
@@ -40,9 +80,9 @@ export function AnalysisProgress({ status }: AnalysisProgressProps) {
     
     const interval = setInterval(() => {
       setProgress(prev => {
-        const maxForStage = [25, 50, 85, 95][currentStage];
+        const maxForStage = [20, 40, 70, 85, 95][currentStage];
         if (prev < maxForStage) {
-          return prev + 0.5;
+          return prev + 0.3;
         }
         return prev;
       });
@@ -50,6 +90,17 @@ export function AnalysisProgress({ status }: AnalysisProgressProps) {
 
     return () => clearInterval(interval);
   }, [currentStage, status]);
+
+  // Rotate analysis details
+  useEffect(() => {
+    if (currentStage < 2) return;
+    
+    const detailInterval = setInterval(() => {
+      setCurrentDetail(prev => (prev + 1) % analysisDetails.length);
+    }, 3000);
+
+    return () => clearInterval(detailInterval);
+  }, [currentStage]);
 
   return (
     <div className="w-full max-w-2xl mx-auto space-y-8 animate-fade-in">
@@ -82,8 +133,9 @@ export function AnalysisProgress({ status }: AnalysisProgressProps) {
             />
             <defs>
               <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="hsl(222, 47%, 15%)" />
-                <stop offset="100%" stopColor="hsl(38, 92%, 50%)" />
+                <stop offset="0%" stopColor="hsl(222, 47%, 25%)" />
+                <stop offset="50%" stopColor="hsl(38, 92%, 50%)" />
+                <stop offset="100%" stopColor="hsl(152, 69%, 40%)" />
               </linearGradient>
             </defs>
           </svg>
@@ -114,7 +166,7 @@ export function AnalysisProgress({ status }: AnalysisProgressProps) {
       </div>
 
       {/* Stage Indicators */}
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-5 gap-2">
         {stages.map((stage, index) => {
           const Icon = stage.icon;
           const isComplete = index < currentStage || status === "completed";
@@ -124,7 +176,7 @@ export function AnalysisProgress({ status }: AnalysisProgressProps) {
             <div
               key={stage.id}
               className={cn(
-                "flex flex-col items-center p-4 rounded-xl transition-all duration-300",
+                "flex flex-col items-center p-3 rounded-xl transition-all duration-300",
                 isComplete && "bg-success/10",
                 isCurrent && "bg-accent/10 scale-105",
                 !isComplete && !isCurrent && "bg-muted/30"
@@ -132,21 +184,21 @@ export function AnalysisProgress({ status }: AnalysisProgressProps) {
             >
               <div
                 className={cn(
-                  "w-10 h-10 rounded-full flex items-center justify-center mb-2 transition-all",
+                  "w-9 h-9 rounded-full flex items-center justify-center mb-2 transition-all",
                   isComplete && "bg-success text-success-foreground",
                   isCurrent && "bg-accent text-accent-foreground pulse-glow",
                   !isComplete && !isCurrent && "bg-muted text-muted-foreground"
                 )}
               >
                 {isComplete ? (
-                  <CheckCircle className="w-5 h-5" />
+                  <CheckCircle className="w-4 h-4" />
                 ) : (
-                  <Icon className={cn("w-5 h-5", isCurrent && "animate-pulse")} />
+                  <Icon className={cn("w-4 h-4", isCurrent && "animate-pulse")} />
                 )}
               </div>
               <span
                 className={cn(
-                  "text-xs text-center font-medium",
+                  "text-[10px] text-center font-medium leading-tight",
                   isComplete && "text-success",
                   isCurrent && "text-accent",
                   !isComplete && !isCurrent && "text-muted-foreground"
@@ -159,16 +211,30 @@ export function AnalysisProgress({ status }: AnalysisProgressProps) {
         })}
       </div>
 
-      {/* Helpful Message */}
-      <div className="text-center">
-        <p className="text-muted-foreground">
-          {currentStage === 0 && "Preparing your video for analysis..."}
-          {currentStage === 1 && "Extracting audio and transcribing speech..."}
-          {currentStage === 2 && "Our AI is analyzing your executive presence..."}
-          {currentStage === 3 && "Generating your personalized coaching report..."}
+      {/* Current Stage Description */}
+      <div className="text-center bg-card border border-border rounded-xl p-4">
+        <p className="text-foreground font-medium">
+          {stages[currentStage]?.description || "Processing your video..."}
         </p>
-        <p className="text-sm text-muted-foreground/70 mt-2">
-          This typically takes 2-3 minutes
+      </div>
+
+      {/* Analysis Detail Ticker (only during AI analysis) */}
+      {currentStage >= 2 && (
+        <div className="flex items-center justify-center gap-2 p-4 bg-muted/30 rounded-xl min-h-[60px]">
+          <Sparkles className="w-4 h-4 text-accent flex-shrink-0" />
+          <p className="text-sm text-muted-foreground animate-fade-in" key={currentDetail}>
+            {analysisDetails[currentDetail]}
+          </p>
+        </div>
+      )}
+
+      {/* Helpful Message */}
+      <div className="text-center space-y-2">
+        <p className="text-sm text-muted-foreground/70">
+          This typically takes 2-3 minutes depending on video length
+        </p>
+        <p className="text-xs text-muted-foreground/50">
+          Our AI analyzes 15+ parameters using established research methodologies
         </p>
       </div>
 
