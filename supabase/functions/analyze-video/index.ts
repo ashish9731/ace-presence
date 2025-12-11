@@ -72,136 +72,232 @@ serve(async (req) => {
     console.log('Word count:', words.length);
 
     // ============================================
-    // ADVANCED AUDIO METRICS CALCULATION
+    // REAL-TIME METRICS WITH TIMESTAMPS
     // ============================================
     
-    // 1. Speaking Rate (WPM) - Research Reference: Optimal range 130-170 WPM (Gallo, 2014)
-    const wordCount = transcript.split(/\s+/).filter((w: string) => w.length > 0).length;
+    // 1. Speaking Rate (WPM) - Real-time calculation
+    const wordCount = words.length;
     const speakingRate = Math.round((wordCount / duration) * 60);
     const speakingRateScore = calculateSpeakingRateScore(speakingRate);
     
-    // 2. Filler Words Analysis - Reference: Carnegie Mellon Speech Research
-    const fillerPatterns = [
-      { word: 'um', weight: 1.0 },
-      { word: 'uh', weight: 1.0 },
-      { word: 'like', weight: 0.8 },
-      { word: 'you know', weight: 0.9 },
-      { word: 'basically', weight: 0.7 },
-      { word: 'actually', weight: 0.6 },
-      { word: 'literally', weight: 0.8 },
-      { word: 'right', weight: 0.5 },
-      { word: 'so', weight: 0.4 },
-      { word: 'i mean', weight: 0.8 },
-      { word: 'kind of', weight: 0.7 },
-      { word: 'sort of', weight: 0.7 },
-    ];
+    const speakingRateMetrics = {
+      wpm: speakingRate,
+      total_words: wordCount,
+      duration_seconds: duration,
+      calculation: `${wordCount} words ÷ ${(duration / 60).toFixed(2)} minutes = ${speakingRate} WPM`,
+      optimal_range: "140-160 WPM",
+      benchmark_source: "Carmine Gallo, 'Talk Like TED' (2014)"
+    };
     
-    const transcriptLower = transcript.toLowerCase();
-    let fillerCount = 0;
-    let weightedFillerScore = 0;
-    const fillerDetails: Record<string, number> = {};
+    // 2. FILLER WORDS - Extract with exact timestamps
+    const fillerPatterns = ['um', 'uh', 'like', 'you know', 'basically', 'actually', 'literally', 'right', 'so', 'i mean', 'kind of', 'sort of'];
     
-    fillerPatterns.forEach(({ word, weight }) => {
-      const regex = new RegExp(`\\b${word}\\b`, 'gi');
-      const matches = transcriptLower.match(regex);
-      const count = matches ? matches.length : 0;
-      if (count > 0) {
-        fillerDetails[word] = count;
-        fillerCount += count;
-        weightedFillerScore += count * weight;
+    interface FillerInstance {
+      word: string;
+      timestamp: string;
+      start_seconds: number;
+      end_seconds: number;
+    }
+    
+    const fillerInstances: FillerInstance[] = [];
+    const fillerCounts: Record<string, number> = {};
+    
+    // Single word fillers
+    words.forEach((w: any) => {
+      const wordLower = w.word.toLowerCase().replace(/[.,!?]/g, '');
+      if (['um', 'uh', 'like', 'basically', 'actually', 'literally', 'right', 'so'].includes(wordLower)) {
+        fillerInstances.push({
+          word: wordLower,
+          timestamp: formatTimestamp(w.start),
+          start_seconds: w.start,
+          end_seconds: w.end
+        });
+        fillerCounts[wordLower] = (fillerCounts[wordLower] || 0) + 1;
       }
     });
     
-    const fillerRate = (fillerCount / wordCount) * 100;
+    // Multi-word fillers (check consecutive words)
+    for (let i = 0; i < words.length - 1; i++) {
+      const twoWords = `${words[i].word.toLowerCase()} ${words[i+1].word.toLowerCase()}`.replace(/[.,!?]/g, '');
+      if (['you know', 'i mean', 'kind of', 'sort of'].includes(twoWords)) {
+        fillerInstances.push({
+          word: twoWords,
+          timestamp: formatTimestamp(words[i].start),
+          start_seconds: words[i].start,
+          end_seconds: words[i+1].end
+        });
+        fillerCounts[twoWords] = (fillerCounts[twoWords] || 0) + 1;
+      }
+    }
+    
+    // Sort by timestamp
+    fillerInstances.sort((a, b) => a.start_seconds - b.start_seconds);
+    
+    const fillerRate = (fillerInstances.length / wordCount) * 100;
     const fillerScore = calculateFillerScore(fillerRate);
     
-    // 3. Hedging/Confidence Language Analysis - Reference: Lakoff's Politeness Theory
-    const hedgingPatterns = [
-      { phrase: 'maybe', weight: 1.0 },
-      { phrase: 'perhaps', weight: 1.0 },
-      { phrase: 'i think', weight: 0.8 },
-      { phrase: 'i guess', weight: 1.0 },
-      { phrase: 'i believe', weight: 0.6 },
-      { phrase: 'kind of', weight: 0.8 },
-      { phrase: 'sort of', weight: 0.8 },
-      { phrase: 'probably', weight: 0.9 },
-      { phrase: 'might', weight: 0.7 },
-      { phrase: 'could be', weight: 0.8 },
-      { phrase: 'it seems', weight: 0.7 },
-      { phrase: 'i suppose', weight: 0.9 },
-      { phrase: 'not sure', weight: 1.0 },
-    ];
+    const fillerMetrics = {
+      total_count: fillerInstances.length,
+      filler_rate_percent: parseFloat(fillerRate.toFixed(2)),
+      instances: fillerInstances,
+      breakdown: fillerCounts,
+      calculation: `${fillerInstances.length} fillers ÷ ${wordCount} words × 100 = ${fillerRate.toFixed(2)}%`,
+      benchmark: "Professional speakers: <2% filler rate",
+      benchmark_source: "Toastmasters International Speech Analysis Research"
+    };
     
-    const confidencePatterns = [
-      'i know', 'i am confident', 'definitely', 'certainly', 'absolutely',
-      'we will', 'i will', 'without doubt', 'clearly', 'undoubtedly'
-    ];
+    // 3. STRATEGIC PAUSES - Extract with exact timestamps
+    interface PauseInstance {
+      after_word: string;
+      before_word: string;
+      timestamp: string;
+      start_seconds: number;
+      duration_seconds: number;
+      pause_type: string;
+    }
     
+    const pauseInstances: PauseInstance[] = [];
+    let totalPauseDuration = 0;
+    let shortPauseCount = 0;
+    let longPauseCount = 0;
+    let strategicPauseCount = 0;
+    
+    if (words.length > 1) {
+      for (let i = 1; i < words.length; i++) {
+        const gap = words[i].start - words[i-1].end;
+        if (gap > 0.3) { // Pause threshold
+          const pauseType = gap > 1.5 ? 'Long Pause' : gap > 0.8 ? 'Strategic Pause' : 'Brief Pause';
+          
+          pauseInstances.push({
+            after_word: words[i-1].word,
+            before_word: words[i].word,
+            timestamp: formatTimestamp(words[i-1].end),
+            start_seconds: words[i-1].end,
+            duration_seconds: parseFloat(gap.toFixed(2)),
+            pause_type: pauseType
+          });
+          
+          totalPauseDuration += gap;
+          
+          if (gap > 1.5) longPauseCount++;
+          else if (gap > 0.8) strategicPauseCount++;
+          else shortPauseCount++;
+        }
+      }
+    }
+    
+    const avgPauseDuration = pauseInstances.length > 0 ? totalPauseDuration / pauseInstances.length : 0;
+    const pausesPerMinute = (pauseInstances.length / duration) * 60;
+    const pauseScore = calculatePauseScore(pausesPerMinute, avgPauseDuration);
+    
+    const pauseMetrics = {
+      total_pauses: pauseInstances.length,
+      pauses_per_minute: parseFloat(pausesPerMinute.toFixed(1)),
+      average_duration: parseFloat(avgPauseDuration.toFixed(2)),
+      total_pause_time: parseFloat(totalPauseDuration.toFixed(2)),
+      brief_pauses: shortPauseCount,
+      strategic_pauses: strategicPauseCount,
+      long_pauses: longPauseCount,
+      instances: pauseInstances.slice(0, 20), // Top 20 pauses
+      calculation: `${pauseInstances.length} pauses ÷ ${(duration / 60).toFixed(2)} min = ${pausesPerMinute.toFixed(1)}/min`,
+      benchmark: "Optimal: 3-5 strategic pauses per minute, 0.5-1.0s duration",
+      benchmark_source: "Zellner (1994) Speech Timing Research"
+    };
+    
+    // 4. SENTENCE ANALYSIS - For verbal clarity
+    const sentences = transcript.split(/[.!?]+/).filter((s: string) => s.trim().length > 0);
+    
+    interface SentenceData {
+      sentence_number: number;
+      text: string;
+      word_count: number;
+      clarity_rating: string;
+    }
+    
+    const sentenceData: SentenceData[] = sentences.map((s: string, i: number) => {
+      const sWordCount = s.trim().split(/\s+/).filter((w: string) => w.length > 0).length;
+      return {
+        sentence_number: i + 1,
+        text: s.trim().substring(0, 100) + (s.trim().length > 100 ? '...' : ''),
+        word_count: sWordCount,
+        clarity_rating: sWordCount <= 15 ? 'Excellent' : sWordCount <= 20 ? 'Good' : sWordCount <= 25 ? 'Moderate' : 'Complex'
+      };
+    });
+    
+    const avgSentenceLength = wordCount / Math.max(sentences.length, 1);
+    const sentenceLengths = sentences.map((s: string) => s.trim().split(/\s+/).filter((w: string) => w.length > 0).length);
+    const shortSentences = sentenceLengths.filter((l: number) => l <= 15).length;
+    const mediumSentences = sentenceLengths.filter((l: number) => l > 15 && l <= 25).length;
+    const longSentences = sentenceLengths.filter((l: number) => l > 25).length;
+    
+    const sentenceMetrics = {
+      total_sentences: sentences.length,
+      average_words_per_sentence: parseFloat(avgSentenceLength.toFixed(1)),
+      short_sentences_count: shortSentences,
+      medium_sentences_count: mediumSentences,
+      long_sentences_count: longSentences,
+      sentence_breakdown: sentenceData.slice(0, 15), // First 15 sentences
+      calculation: `${wordCount} words ÷ ${sentences.length} sentences = ${avgSentenceLength.toFixed(1)} words/sentence`,
+      benchmark: "Optimal: 15-20 words per sentence for clarity",
+      benchmark_source: "Flesch-Kincaid Readability Research"
+    };
+    
+    // 5. Hedging/Confidence Language Analysis
+    const hedgingPhrases = ['maybe', 'perhaps', 'i think', 'i guess', 'i believe', 'kind of', 'sort of', 'probably', 'might', 'could be', 'it seems', 'i suppose', 'not sure'];
+    const confidencePhrases = ['i know', 'i am confident', 'definitely', 'certainly', 'absolutely', 'we will', 'i will', 'without doubt', 'clearly', 'undoubtedly'];
+    
+    const transcriptLower = transcript.toLowerCase();
+    
+    interface LanguageInstance {
+      phrase: string;
+      type: string;
+      count: number;
+    }
+    
+    const languageInstances: LanguageInstance[] = [];
     let hedgeCount = 0;
     let confidenceCount = 0;
-    const hedgeDetails: Record<string, number> = {};
     
-    hedgingPatterns.forEach(({ phrase, weight }) => {
+    hedgingPhrases.forEach(phrase => {
       const regex = new RegExp(`\\b${phrase}\\b`, 'gi');
       const matches = transcriptLower.match(regex);
       const count = matches ? matches.length : 0;
       if (count > 0) {
-        hedgeDetails[phrase] = count;
+        languageInstances.push({ phrase, type: 'Hedging', count });
         hedgeCount += count;
       }
     });
     
-    confidencePatterns.forEach(phrase => {
+    confidencePhrases.forEach(phrase => {
       const regex = new RegExp(`\\b${phrase}\\b`, 'gi');
       const matches = transcriptLower.match(regex);
-      confidenceCount += matches ? matches.length : 0;
+      const count = matches ? matches.length : 0;
+      if (count > 0) {
+        languageInstances.push({ phrase, type: 'Confidence', count });
+        confidenceCount += count;
+      }
     });
     
     const confidenceRatio = confidenceCount / Math.max(hedgeCount, 1);
     const confidenceScore = calculateConfidenceScore(hedgeCount, confidenceCount, wordCount);
     
-    // 4. Pause Analysis - Reference: Zellner (1994) Speech Timing Research
-    let pauseCount = 0;
-    let totalPauseDuration = 0;
-    let longPauseCount = 0;
-    let shortPauseCount = 0;
-    const pauses: number[] = [];
+    const confidenceMetrics = {
+      hedge_count: hedgeCount,
+      confidence_count: confidenceCount,
+      confidence_ratio: parseFloat(confidenceRatio.toFixed(2)),
+      language_breakdown: languageInstances.sort((a, b) => b.count - a.count),
+      calculation: `${confidenceCount} confidence phrases ÷ ${Math.max(hedgeCount, 1)} hedging phrases = ${confidenceRatio.toFixed(2)} ratio`,
+      benchmark: "High-EP leaders use confidence language 3x more than hedging",
+      benchmark_source: "Amy Cuddy, Harvard Business School Presence Research"
+    };
     
-    if (words.length > 1) {
-      for (let i = 1; i < words.length; i++) {
-        const gap = words[i].start - words[i-1].end;
-        if (gap > 0.3) { // Short pause threshold
-          pauseCount++;
-          totalPauseDuration += gap;
-          pauses.push(gap);
-          
-          if (gap > 1.5) {
-            longPauseCount++;
-          } else {
-            shortPauseCount++;
-          }
-        }
-      }
-    }
-    
-    const avgPauseDuration = pauseCount > 0 ? totalPauseDuration / pauseCount : 0;
-    const pausesPerMinute = (pauseCount / duration) * 60;
-    const pauseScore = calculatePauseScore(pausesPerMinute, avgPauseDuration);
-    
-    // 5. Sentence Structure Analysis - Reference: Flesch Reading Ease
-    const sentences = transcript.split(/[.!?]+/).filter((s: string) => s.trim().length > 0);
-    const avgSentenceLength = wordCount / Math.max(sentences.length, 1);
-    const sentenceLengthVariance = calculateSentenceLengthVariance(sentences);
-    
-    // 6. First Impression Analysis (first 30-40 seconds)
+    // 6. First Impression Analysis (first 40 seconds)
     const firstImpressionWords = words.filter((w: any) => w.start <= 40);
     const firstImpressionText = firstImpressionWords.map((w: any) => w.word).join(' ');
-    const firstImpressionWordCount = firstImpressionWords.length;
     
-    // 7. Vocal Variety Indicators (from transcript patterns)
+    // 7. Vocal Variety Indicators
     const exclamationCount = (transcript.match(/!/g) || []).length;
     const questionCount = (transcript.match(/\?/g) || []).length;
-    const emphasisIndicators = exclamationCount + questionCount;
     
     // ============================================
     // COMPREHENSIVE AI ANALYSIS WITH GPT-4o
@@ -209,7 +305,7 @@ serve(async (req) => {
     
     console.log('Running comprehensive AI analysis with GPT-4o...');
     
-    const analysisPrompt = `You are a world-class Executive Presence assessment expert with credentials from Harvard Business School and experience coaching Fortune 500 CEOs. Analyze this leadership video transcript with scientific rigor.
+    const analysisPrompt = `You are a world-class Executive Presence assessment expert. Analyze this leadership video transcript with scientific rigor.
 
 TRANSCRIPT (${Math.round(duration / 60)} minutes, ${wordCount} words):
 "${transcript}"
@@ -217,174 +313,157 @@ TRANSCRIPT (${Math.round(duration / 60)} minutes, ${wordCount} words):
 FIRST IMPRESSION TEXT (0-40 seconds):
 "${firstImpressionText}"
 
-===== QUANTITATIVE AUDIO METRICS =====
+===== REAL-TIME QUANTITATIVE METRICS =====
 
-📊 SPEAKING RATE ANALYSIS:
-- Words Per Minute: ${speakingRate} WPM
-- Benchmark: Optimal executive range is 140-160 WPM (Reference: Carmine Gallo, "Talk Like TED", 2014)
-- Analysis: ${speakingRate < 130 ? 'Below optimal - may seem deliberate or hesitant' : speakingRate > 170 ? 'Above optimal - may overwhelm listeners' : 'Within optimal range'}
+📊 SPEAKING RATE:
+${JSON.stringify(speakingRateMetrics, null, 2)}
+Pre-calculated Score: ${speakingRateScore}/100
 
-📊 FILLER WORD ANALYSIS:
-- Total Fillers: ${fillerCount} instances (${fillerRate.toFixed(2)}% of words)
-- Breakdown: ${Object.entries(fillerDetails).map(([k, v]) => `"${k}": ${v}`).join(', ') || 'None detected'}
-- Benchmark: Professional speakers average <2% filler rate (Reference: Toastmasters International)
-- Pre-calculated Score: ${fillerScore}/100
+📊 FILLER WORDS (WITH TIMESTAMPS):
+${JSON.stringify(fillerMetrics, null, 2)}
+Pre-calculated Score: ${fillerScore}/100
 
-📊 CONFIDENCE LANGUAGE ANALYSIS:
-- Hedging Phrases: ${hedgeCount} instances
-- Hedging Breakdown: ${Object.entries(hedgeDetails).map(([k, v]) => `"${k}": ${v}`).join(', ') || 'None detected'}
-- Confidence Phrases: ${confidenceCount} instances
-- Confidence Ratio: ${confidenceRatio.toFixed(2)}
-- Benchmark: High-EP leaders use confidence language 3x more than hedging (Reference: Amy Cuddy, Harvard research)
-- Pre-calculated Score: ${confidenceScore}/100
+📊 STRATEGIC PAUSES (WITH TIMESTAMPS):
+${JSON.stringify(pauseMetrics, null, 2)}
+Pre-calculated Score: ${pauseScore}/100
 
-📊 PAUSE PATTERN ANALYSIS:
-- Total Pauses: ${pauseCount} (${pausesPerMinute.toFixed(1)} per minute)
-- Short Pauses (0.3-1.5s): ${shortPauseCount}
-- Long Pauses (>1.5s): ${longPauseCount}
-- Average Pause Duration: ${avgPauseDuration.toFixed(2)}s
-- Benchmark: Optimal is 3-5 pauses/minute, 0.5-1.0s average (Reference: Zellner, 1994)
-- Pre-calculated Score: ${pauseScore}/100
+📊 SENTENCE ANALYSIS (VERBAL CLARITY):
+${JSON.stringify(sentenceMetrics, null, 2)}
 
-📊 SENTENCE STRUCTURE:
-- Total Sentences: ${sentences.length}
-- Average Sentence Length: ${avgSentenceLength.toFixed(1)} words
-- Benchmark: 15-20 words per sentence for clarity (Reference: Flesch-Kincaid)
-
-📊 SPEAKING RATE PRE-CALCULATED: ${speakingRateScore}/100
+📊 CONFIDENCE LANGUAGE:
+${JSON.stringify(confidenceMetrics, null, 2)}
+Pre-calculated Score: ${confidenceScore}/100
 
 ===== RESPONSE REQUIREMENTS =====
 
-Provide your analysis in the following JSON format. Your scores should CLOSELY ALIGN with the pre-calculated scores above, adjusting only based on context you can observe in the transcript that the metrics cannot capture.
+Provide your analysis in the following JSON format. Include the real-time metrics data in your response:
 
 {
   "communication": {
     "overall_score": <average of all communication parameters>,
     "parameters": {
       "speaking_rate": {
-        "score": <use ${speakingRateScore} as base, adjust ±5 based on context>,
+        "score": ${speakingRateScore},
         "raw_value": "${speakingRate} WPM",
-        "observation": "<specific observation citing the ${speakingRate} WPM metric and comparing to 140-160 optimal range>",
-        "coaching": "<actionable tip with specific technique name>",
+        "metrics": ${JSON.stringify(speakingRateMetrics)},
+        "observation": "<specific observation citing the ${speakingRate} WPM metric>",
+        "coaching": "<actionable tip with specific technique>",
         "reference": "Carmine Gallo, 'Talk Like TED' (2014) - Optimal executive speaking rate: 140-160 WPM"
       },
       "vocal_variety": {
-        "score": <0-100 based on transcript patterns, emphasis indicators: ${emphasisIndicators}>,
-        "observation": "<assess sentence variety, punctuation patterns, energy shifts in transcript>",
-        "coaching": "<specific technique to improve vocal variety>",
+        "score": <0-100>,
+        "observation": "<assess vocal patterns from transcript>",
+        "coaching": "<specific technique>",
         "reference": "Dr. Albert Mehrabian - 38% of communication impact comes from vocal variety"
       },
       "verbal_clarity": {
         "score": <0-100 based on avg sentence length ${avgSentenceLength.toFixed(1)} words>,
         "raw_value": "Avg ${avgSentenceLength.toFixed(1)} words/sentence",
-        "observation": "<assess readability, sentence structure, word choice>",
-        "coaching": "<specific tip for clarity improvement>",
+        "metrics": ${JSON.stringify(sentenceMetrics)},
+        "observation": "<assess readability and sentence structure>",
+        "coaching": "<specific clarity tip>",
         "reference": "Flesch-Kincaid readability research - Optimal: 15-20 words per sentence"
       },
       "filler_words": {
-        "score": <use ${fillerScore} as base, adjust ±5 based on context>,
-        "raw_value": "${fillerCount} fillers (${fillerRate.toFixed(1)}%)",
-        "observation": "<specific observation about filler word usage with examples from transcript>",
-        "coaching": "<specific technique to reduce fillers, e.g., 'pregnant pause' method>",
+        "score": ${fillerScore},
+        "raw_value": "${fillerInstances.length} fillers (${fillerRate.toFixed(1)}%)",
+        "metrics": ${JSON.stringify(fillerMetrics)},
+        "observation": "<observation about specific fillers used with timestamps>",
+        "coaching": "<specific technique like 'pregnant pause' method>",
         "reference": "Toastmasters International - Professional benchmark: <2% filler rate"
       },
       "strategic_pauses": {
-        "score": <use ${pauseScore} as base, adjust ±5>,
+        "score": ${pauseScore},
         "raw_value": "${pausesPerMinute.toFixed(1)} pauses/min, avg ${avgPauseDuration.toFixed(2)}s",
-        "observation": "<assess pause usage pattern and effectiveness>",
-        "coaching": "<specific technique like 'power pause' or 'three-beat pause'>",
+        "metrics": ${JSON.stringify(pauseMetrics)},
+        "observation": "<assess pause patterns with specific timestamps>",
+        "coaching": "<specific technique like 'power pause'>",
         "reference": "Zellner (1994) Speech Timing - Optimal: 3-5 strategic pauses per minute"
       },
       "confidence_language": {
-        "score": <use ${confidenceScore} as base, adjust ±5>,
+        "score": ${confidenceScore},
         "raw_value": "${hedgeCount} hedges vs ${confidenceCount} confidence markers",
-        "observation": "<specific examples of hedging or confidence language from transcript>",
-        "coaching": "<specific language substitution techniques>",
-        "reference": "Amy Cuddy, Harvard Business School - Presence research on authoritative language"
+        "metrics": ${JSON.stringify(confidenceMetrics)},
+        "observation": "<specific examples from transcript>",
+        "coaching": "<language substitution techniques>",
+        "reference": "Amy Cuddy, Harvard Business School - Presence research"
       }
     }
   },
   "appearance_nonverbal": {
-    "overall_score": <average of parameters>,
-    "note": "Analysis based on speech patterns and linguistic cues. Video frame analysis would provide additional nonverbal insights.",
-    "methodology": "Inferred from vocal qualities, language intensity, engagement markers, and prosodic patterns",
+    "overall_score": <average>,
+    "note": "Analysis based on speech patterns and linguistic cues.",
     "parameters": {
       "presence_projection": {
-        "score": <0-100 based on language strength and authority>,
-        "observation": "<assess commanding language, declarative statements, opening strength>",
-        "coaching": "<specific presence technique>",
-        "reference": "Sylvia Ann Hewlett, 'Executive Presence' - Gravitas component scoring"
+        "score": <0-100>,
+        "observation": "<assess commanding language>",
+        "coaching": "<presence technique>",
+        "reference": "Sylvia Ann Hewlett, 'Executive Presence' - Gravitas scoring"
       },
       "engagement_cues": {
-        "score": <0-100 based on rhetorical questions, direct address, inclusive language>,
-        "observation": "<count and assess engagement techniques used>",
-        "coaching": "<specific audience engagement technique>",
-        "reference": "Nancy Duarte, 'Resonate' - Audience engagement patterns"
+        "score": <0-100>,
+        "observation": "<assess engagement techniques>",
+        "coaching": "<engagement technique>",
+        "reference": "Nancy Duarte, 'Resonate' - Audience engagement"
       },
       "first_impression_impact": {
-        "score": <0-100 based on first 40 seconds - ${firstImpressionWordCount} words>",
-        "raw_value": "First 40s: ${firstImpressionWordCount} words",
-        "observation": "<assess opening strength, hook quality, introduction clarity>",
-        "coaching": "<specific opening technique>",
-        "reference": "Princeton research - 7-second first impression window; extended to 30-40s for video"
+        "score": <0-100>,
+        "raw_value": "First 40s: ${firstImpressionWords.length} words",
+        "observation": "<assess opening strength>",
+        "coaching": "<opening technique>",
+        "reference": "Princeton research - 7-second first impression"
       },
       "energy_consistency": {
-        "score": <0-100 based on language intensity throughout>,
-        "observation": "<assess energy level consistency from beginning to end of transcript>",
-        "coaching": "<specific energy management technique>",
-        "reference": "Tony Robbins methodology - State management for sustained energy"
+        "score": <0-100>,
+        "observation": "<assess energy level>",
+        "coaching": "<energy management technique>",
+        "reference": "Tony Robbins - State management"
       }
     }
   },
   "storytelling": {
-    "overall_score": <average of parameters, or lower if no story detected>,
+    "overall_score": <average>,
     "story_detected": <true/false>,
-    "story_count": <number of narrative segments identified>,
+    "story_count": <number>,
     "parameters": {
       "narrative_structure": {
-        "score": <0-100 based on setup-conflict-resolution presence>,
-        "observation": "<identify specific story elements present or missing>",
-        "coaching": "<specific story structure technique like 'STAR' or 'Hero's Journey Lite'>",
-        "reference": "Joseph Campbell's Hero's Journey adapted for business (Duarte, 2010)"
+        "score": <0-100>,
+        "observation": "<story elements>",
+        "coaching": "<structure technique>",
+        "reference": "Joseph Campbell's Hero's Journey"
       },
       "cognitive_ease": {
-        "score": <0-100 based on connectors, flow, logical progression>,
-        "observation": "<assess use of transitional phrases, logical flow>",
-        "coaching": "<specific technique for narrative flow>",
-        "reference": "Daniel Kahneman, 'Thinking Fast and Slow' - Cognitive fluency research"
+        "score": <0-100>,
+        "observation": "<flow assessment>",
+        "coaching": "<flow technique>",
+        "reference": "Daniel Kahneman - Cognitive fluency"
       },
       "self_disclosure_authenticity": {
-        "score": <0-100 based on personal pronouns, lessons learned, vulnerability>,
-        "observation": "<assess level of personal sharing and authenticity>",
-        "coaching": "<specific authenticity technique>",
-        "reference": "Brené Brown - Vulnerability and connection in leadership"
+        "score": <0-100>,
+        "observation": "<authenticity assessment>",
+        "coaching": "<authenticity technique>",
+        "reference": "Brené Brown - Vulnerability in leadership"
       },
       "memorability_concreteness": {
-        "score": <0-100 based on specific details, names, numbers, sensory words>,
-        "observation": "<assess concrete details vs abstract language>",
-        "coaching": "<specific technique for memorable storytelling>",
-        "reference": "Chip Heath, 'Made to Stick' - Concreteness principle"
+        "score": <0-100>,
+        "observation": "<concrete details assessment>",
+        "coaching": "<memorability technique>",
+        "reference": "Chip Heath, 'Made to Stick'"
       },
       "story_placement_pacing": {
-        "score": <0-100 based on where stories appear and their length>,
-        "observation": "<assess story timing and pacing within the presentation>",
-        "coaching": "<specific pacing technique>",
-        "reference": "TED Talk analysis - Optimal story placement in middle third"
+        "score": <0-100>,
+        "observation": "<pacing assessment>",
+        "coaching": "<pacing technique>",
+        "reference": "TED Talk analysis"
       }
     }
   },
-  "summary": "<3-4 sentences: Start with top strength with specific evidence. Then key development area with specific observation. End with encouraging next step.>",
+  "summary": "<3-4 sentences with specific evidence>",
   "top_strengths": ["<strength 1>", "<strength 2>"],
-  "priority_development": "<single most impactful area to focus on>"
+  "priority_development": "<single most impactful area>"
 }
 
-CRITICAL REQUIREMENTS:
-1. Scores MUST be based on the quantitative metrics provided - do not deviate more than ±10 from pre-calculated scores without clear justification
-2. Every observation MUST cite specific words, phrases, or numbers from the transcript or metrics
-3. Every coaching tip MUST name a specific technique (not generic advice)
-4. If no clear story is detected, storytelling scores should be 40-60 max with story_detected: false
-5. Differentiate scores meaningfully - avoid clustering everything at 70-80
-6. References must be real and relevant to executive presence research`;
+CRITICAL: Include the full metrics objects in your response. All observations must cite specific data.`;
 
     const analysisResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -397,12 +476,12 @@ CRITICAL REQUIREMENTS:
         messages: [
           {
             role: 'system',
-            content: 'You are an expert executive coach with deep knowledge of speech analysis, leadership presence, and communication research. You provide data-driven assessments backed by specific metrics and academic research. Always respond with valid JSON only, no markdown formatting.'
+            content: 'You are an expert executive coach. Provide data-driven assessments backed by specific metrics. Always respond with valid JSON only, no markdown.'
           },
           { role: 'user', content: analysisPrompt }
         ],
         temperature: 0.7,
-        max_tokens: 5000,
+        max_tokens: 6000,
       }),
     });
 
@@ -415,7 +494,7 @@ CRITICAL REQUIREMENTS:
     const analysisData = await analysisResponse.json();
     let analysisText = analysisData.choices[0].message.content;
     
-    // Clean up any markdown formatting
+    // Clean up markdown
     analysisText = analysisText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     
     console.log('Raw analysis response length:', analysisText.length);
@@ -429,12 +508,30 @@ CRITICAL REQUIREMENTS:
       throw new Error('Failed to parse AI analysis response');
     }
 
+    // Ensure metrics are included even if AI didn't include them
+    if (analysis.communication?.parameters) {
+      if (analysis.communication.parameters.speaking_rate) {
+        analysis.communication.parameters.speaking_rate.metrics = speakingRateMetrics;
+      }
+      if (analysis.communication.parameters.filler_words) {
+        analysis.communication.parameters.filler_words.metrics = fillerMetrics;
+      }
+      if (analysis.communication.parameters.strategic_pauses) {
+        analysis.communication.parameters.strategic_pauses.metrics = pauseMetrics;
+      }
+      if (analysis.communication.parameters.verbal_clarity) {
+        analysis.communication.parameters.verbal_clarity.metrics = sentenceMetrics;
+      }
+      if (analysis.communication.parameters.confidence_language) {
+        analysis.communication.parameters.confidence_language.metrics = confidenceMetrics;
+      }
+    }
+
     // Calculate weighted overall score
     const communicationScore = analysis.communication.overall_score;
     const appearanceScore = analysis.appearance_nonverbal.overall_score;
     const storytellingScore = analysis.storytelling.overall_score;
     
-    // Weights: Communication 40%, Appearance 35%, Storytelling 25%
     const overallScore = Math.round(
       (communicationScore * 0.4) + 
       (appearanceScore * 0.35) + 
@@ -486,7 +583,6 @@ CRITICAL REQUIREMENTS:
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('Error in analyze-video:', errorMessage);
 
-    // Try to update assessment with error status
     try {
       const { assessmentId } = await req.clone().json();
       if (assessmentId) {
@@ -513,12 +609,17 @@ CRITICAL REQUIREMENTS:
 });
 
 // ============================================
-// SCORING FUNCTIONS WITH RESEARCH BACKING
+// HELPER FUNCTIONS
 // ============================================
 
+function formatTimestamp(seconds: number): string {
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  const ms = Math.round((seconds % 1) * 10);
+  return `${mins}:${secs.toString().padStart(2, '0')}.${ms}`;
+}
+
 function calculateSpeakingRateScore(wpm: number): number {
-  // Reference: Carmine Gallo, "Talk Like TED" (2014)
-  // Optimal range: 140-160 WPM for executives
   if (wpm >= 140 && wpm <= 160) return 95;
   if (wpm >= 130 && wpm < 140) return 85;
   if (wpm > 160 && wpm <= 170) return 85;
@@ -532,8 +633,6 @@ function calculateSpeakingRateScore(wpm: number): number {
 }
 
 function calculateFillerScore(fillerRate: number): number {
-  // Reference: Toastmasters International benchmarks
-  // Professional speakers: <2% filler rate
   if (fillerRate <= 1) return 95;
   if (fillerRate <= 2) return 85;
   if (fillerRate <= 3) return 75;
@@ -544,9 +643,7 @@ function calculateFillerScore(fillerRate: number): number {
 }
 
 function calculateConfidenceScore(hedges: number, confidence: number, wordCount: number): number {
-  // Reference: Amy Cuddy, Harvard presence research
   const hedgeRate = (hedges / wordCount) * 100;
-  const confidenceRate = (confidence / wordCount) * 100;
   const ratio = confidence / Math.max(hedges, 1);
   
   if (ratio >= 3 && hedgeRate < 1) return 95;
@@ -558,30 +655,16 @@ function calculateConfidenceScore(hedges: number, confidence: number, wordCount:
 }
 
 function calculatePauseScore(pausesPerMinute: number, avgDuration: number): number {
-  // Reference: Zellner (1994) - Speech Timing
-  // Optimal: 3-5 pauses/min, 0.5-1.0s average
   let score = 70;
   
-  // Evaluate frequency
   if (pausesPerMinute >= 3 && pausesPerMinute <= 5) score += 15;
   else if (pausesPerMinute >= 2 && pausesPerMinute <= 6) score += 8;
   else if (pausesPerMinute < 2) score -= 10;
   else if (pausesPerMinute > 8) score -= 10;
   
-  // Evaluate duration
   if (avgDuration >= 0.5 && avgDuration <= 1.0) score += 15;
   else if (avgDuration >= 0.3 && avgDuration <= 1.5) score += 8;
   else if (avgDuration > 2.0) score -= 10;
   
   return Math.max(30, Math.min(100, score));
-}
-
-function calculateSentenceLengthVariance(sentences: string[]): number {
-  if (sentences.length < 2) return 0;
-  
-  const lengths = sentences.map(s => s.split(/\s+/).length);
-  const mean = lengths.reduce((a, b) => a + b, 0) / lengths.length;
-  const variance = lengths.reduce((acc, len) => acc + Math.pow(len - mean, 2), 0) / lengths.length;
-  
-  return Math.sqrt(variance);
 }
