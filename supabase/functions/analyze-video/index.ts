@@ -300,6 +300,46 @@ serve(async (req) => {
     const questionCount = (transcript.match(/\?/g) || []).length;
     
     // ============================================
+    // GRAVITAS METRICS - Command & Authority Analysis
+    // ============================================
+    
+    // Decisive language patterns
+    const decisivePatterns = ['will', 'must', 'shall', 'need to', 'have to', 'going to', 'commit', 'decide', 'choose', 'determine'];
+    const tentativePatterns = ['might', 'maybe', 'perhaps', 'could', 'would', 'possibly', 'hopefully', 'try to', 'attempt'];
+    
+    let decisiveCount = 0;
+    let tentativeCount = 0;
+    
+    decisivePatterns.forEach(pattern => {
+      const regex = new RegExp(`\\b${pattern}\\b`, 'gi');
+      const matches = transcriptLower.match(regex);
+      decisiveCount += matches ? matches.length : 0;
+    });
+    
+    tentativePatterns.forEach(pattern => {
+      const regex = new RegExp(`\\b${pattern}\\b`, 'gi');
+      const matches = transcriptLower.match(regex);
+      tentativeCount += matches ? matches.length : 0;
+    });
+    
+    const decisivenessRatio = decisiveCount / Math.max(tentativeCount, 1);
+    const decisivenessScore = Math.min(100, Math.round(50 + (decisivenessRatio * 15)));
+    
+    const gravitasMetrics = {
+      decisive_phrases: decisiveCount,
+      tentative_phrases: tentativeCount,
+      decisiveness_ratio: parseFloat(decisivenessRatio.toFixed(2)),
+      authority_indicators: {
+        first_person_singular: (transcriptLower.match(/\bi\b/gi) || []).length,
+        first_person_plural: (transcriptLower.match(/\bwe\b/gi) || []).length,
+        inclusive_ratio: parseFloat(((transcriptLower.match(/\bwe\b/gi) || []).length / Math.max((transcriptLower.match(/\bi\b/gi) || []).length, 1)).toFixed(2))
+      },
+      calculation: `${decisiveCount} decisive phrases ÷ ${Math.max(tentativeCount, 1)} tentative = ${decisivenessRatio.toFixed(2)} ratio`,
+      benchmark: "High-gravitas leaders use 2-3x more decisive language than tentative",
+      benchmark_source: "Sylvia Ann Hewlett, 'Executive Presence' (2014)"
+    };
+
+    // ============================================
     // COMPREHENSIVE AI ANALYSIS WITH GPT-4o
     // ============================================
     
@@ -314,6 +354,10 @@ FIRST IMPRESSION TEXT (0-40 seconds):
 "${firstImpressionText}"
 
 ===== REAL-TIME QUANTITATIVE METRICS =====
+
+📊 GRAVITAS METRICS:
+${JSON.stringify(gravitasMetrics, null, 2)}
+Decisiveness Score: ${decisivenessScore}/100
 
 📊 SPEAKING RATE:
 ${JSON.stringify(speakingRateMetrics, null, 2)}
@@ -339,6 +383,44 @@ Pre-calculated Score: ${confidenceScore}/100
 Provide your analysis in the following JSON format. Include the real-time metrics data in your response:
 
 {
+  "gravitas": {
+    "overall_score": <average of all gravitas parameters>,
+    "methodology": "Gravitas assessment based on Sylvia Ann Hewlett's Executive Presence framework measuring command, authority, and emotional intelligence.",
+    "parameters": {
+      "commanding_presence": {
+        "score": <0-100>,
+        "observation": "<assess authority in tone and language>",
+        "coaching": "<specific technique for commanding presence>",
+        "reference": "Sylvia Ann Hewlett - Executive Presence: command the room"
+      },
+      "decisiveness": {
+        "score": ${decisivenessScore},
+        "raw_value": "${decisiveCount} decisive vs ${tentativeCount} tentative phrases",
+        "metrics": ${JSON.stringify(gravitasMetrics)},
+        "observation": "<specific observation about decisiveness in language>",
+        "coaching": "<actionable tip to increase decisiveness>",
+        "reference": "HBR Research - Decisive leaders use 'will' over 'might' 3x more"
+      },
+      "poise_under_pressure": {
+        "score": <0-100 based on steady delivery patterns>,
+        "observation": "<assess composure indicators>",
+        "coaching": "<technique for maintaining poise>",
+        "reference": "Amy Cuddy - Power posing and composure research"
+      },
+      "emotional_intelligence": {
+        "score": <0-100>,
+        "observation": "<assess emotional awareness in communication>",
+        "coaching": "<EQ development technique>",
+        "reference": "Daniel Goleman - Emotional Intelligence in Leadership"
+      },
+      "vision_articulation": {
+        "score": <0-100>,
+        "observation": "<assess ability to paint future picture>",
+        "coaching": "<vision communication technique>",
+        "reference": "Simon Sinek - Start With Why framework"
+      }
+    }
+  },
   "communication": {
     "overall_score": <average of all communication parameters>,
     "parameters": {
@@ -509,6 +591,12 @@ CRITICAL: Include the full metrics objects in your response. All observations mu
     }
 
     // Ensure metrics are included even if AI didn't include them
+    if (analysis.gravitas?.parameters) {
+      if (analysis.gravitas.parameters.decisiveness) {
+        analysis.gravitas.parameters.decisiveness.metrics = gravitasMetrics;
+      }
+    }
+    
     if (analysis.communication?.parameters) {
       if (analysis.communication.parameters.speaking_rate) {
         analysis.communication.parameters.speaking_rate.metrics = speakingRateMetrics;
@@ -527,18 +615,20 @@ CRITICAL: Include the full metrics objects in your response. All observations mu
       }
     }
 
-    // Calculate weighted overall score
+    // Calculate weighted overall score (Gravitas: 25%, Communication: 30%, Appearance: 25%, Storytelling: 20%)
+    const gravitasScore = analysis.gravitas?.overall_score || 70;
     const communicationScore = analysis.communication.overall_score;
     const appearanceScore = analysis.appearance_nonverbal.overall_score;
     const storytellingScore = analysis.storytelling.overall_score;
     
     const overallScore = Math.round(
-      (communicationScore * 0.4) + 
-      (appearanceScore * 0.35) + 
-      (storytellingScore * 0.25)
+      (gravitasScore * 0.25) +
+      (communicationScore * 0.30) + 
+      (appearanceScore * 0.25) + 
+      (storytellingScore * 0.20)
     );
 
-    console.log('Final scores - Overall:', overallScore, 'Comm:', communicationScore, 'App:', appearanceScore, 'Story:', storytellingScore);
+    console.log('Final scores - Overall:', overallScore, 'Gravitas:', gravitasScore, 'Comm:', communicationScore, 'App:', appearanceScore, 'Story:', storytellingScore);
 
     // Update assessment with results
     const { error: updateError } = await supabase
@@ -549,7 +639,11 @@ CRITICAL: Include the full metrics objects in your response. All observations mu
         communication_score: communicationScore,
         appearance_score: appearanceScore,
         storytelling_score: storytellingScore,
-        communication_analysis: analysis.communication,
+        communication_analysis: {
+          ...analysis.communication,
+          gravitas_analysis: analysis.gravitas,
+          gravitas_score: gravitasScore
+        },
         appearance_analysis: analysis.appearance_nonverbal,
         storytelling_analysis: {
           ...analysis.storytelling,
