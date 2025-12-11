@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, ChevronLeft, MessageSquare, Eye, BookOpen, Lightbulb, Info, BookmarkCheck, Target, ExternalLink, Award, Download, Clock, Hash, FileText } from "lucide-react";
+import { ChevronDown, ChevronLeft, MessageSquare, Eye, BookOpen, Lightbulb, Info, BookmarkCheck, Target, ExternalLink, Award, Download, Clock, Hash, FileText, Crown, Zap } from "lucide-react";
 import { ScoreRing } from "./ScoreRing";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,20 @@ interface SentenceData {
   text: string;
   word_count: number;
   clarity_rating: string;
+}
+
+interface GravitasMetrics {
+  decisive_phrases: number;
+  tentative_phrases: number;
+  decisiveness_ratio: number;
+  authority_indicators: {
+    first_person_singular: number;
+    first_person_plural: number;
+    inclusive_ratio: number;
+  };
+  calculation: string;
+  benchmark: string;
+  benchmark_source: string;
 }
 
 interface FillerMetrics {
@@ -97,7 +111,7 @@ interface ParameterData {
   observation: string;
   coaching: string;
   reference?: string;
-  metrics?: FillerMetrics | PauseMetrics | SentenceMetrics | SpeakingRateMetrics | ConfidenceMetrics;
+  metrics?: FillerMetrics | PauseMetrics | SentenceMetrics | SpeakingRateMetrics | ConfidenceMetrics | GravitasMetrics;
 }
 
 interface BucketData {
@@ -106,6 +120,8 @@ interface BucketData {
   methodology?: string;
   story_detected?: boolean;
   story_count?: number;
+  gravitas_analysis?: BucketData;
+  gravitas_score?: number;
   parameters: Record<string, ParameterData>;
 }
 
@@ -134,18 +150,25 @@ interface AssessmentReportProps {
 }
 
 const bucketIcons = {
+  gravitas: Crown,
   communication: MessageSquare,
   appearance: Eye,
   storytelling: BookOpen,
 };
 
 const bucketColors = {
+  gravitas: "hsl(280, 60%, 50%)",
   communication: "hsl(222, 47%, 25%)",
   appearance: "hsl(38, 92%, 50%)",
   storytelling: "hsl(152, 69%, 40%)",
 };
 
 const parameterLabels: Record<string, string> = {
+  commanding_presence: "Commanding Presence",
+  decisiveness: "Decisiveness",
+  poise_under_pressure: "Poise Under Pressure",
+  emotional_intelligence: "Emotional Intelligence",
+  vision_articulation: "Vision Articulation",
   speaking_rate: "Speaking Rate",
   vocal_variety: "Vocal Variety",
   verbal_clarity: "Verbal Clarity",
@@ -183,15 +206,57 @@ function MetricsPanel({ paramKey, metrics }: { paramKey: string; metrics: Parame
   
   if (!metrics) return null;
 
-  const renderFillerMetrics = (m: FillerMetrics) => (
+  const renderGravitasMetrics = (m: GravitasMetrics) => (
     <div className="space-y-4">
-      {/* Calculation */}
       <div className="bg-primary/5 p-3 rounded-lg">
         <p className="text-xs text-muted-foreground mb-1 font-semibold">📐 Calculation</p>
         <p className="font-mono text-sm text-foreground">{m.calculation}</p>
       </div>
       
-      {/* Breakdown */}
+      <div className="grid grid-cols-2 gap-2">
+        <div className="bg-success/10 p-3 rounded-lg text-center">
+          <p className="text-2xl font-bold text-success">{m.decisive_phrases}</p>
+          <p className="text-xs text-muted-foreground">Decisive Phrases</p>
+        </div>
+        <div className="bg-warning/10 p-3 rounded-lg text-center">
+          <p className="text-2xl font-bold text-warning">{m.tentative_phrases}</p>
+          <p className="text-xs text-muted-foreground">Tentative Phrases</p>
+        </div>
+      </div>
+      
+      <div className="bg-muted/30 p-3 rounded-lg">
+        <p className="text-xs text-muted-foreground mb-2 font-semibold">👤 Authority Indicators</p>
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <div>
+            <p className="text-lg font-bold text-foreground">{m.authority_indicators.first_person_singular}</p>
+            <p className="text-xs text-muted-foreground">"I" usage</p>
+          </div>
+          <div>
+            <p className="text-lg font-bold text-foreground">{m.authority_indicators.first_person_plural}</p>
+            <p className="text-xs text-muted-foreground">"We" usage</p>
+          </div>
+          <div>
+            <p className="text-lg font-bold text-primary">{m.authority_indicators.inclusive_ratio}</p>
+            <p className="text-xs text-muted-foreground">Inclusive Ratio</p>
+          </div>
+        </div>
+      </div>
+      
+      <div className="bg-success/5 p-3 rounded-lg">
+        <p className="text-xs text-muted-foreground mb-1 font-semibold">🎯 Benchmark</p>
+        <p className="text-sm text-foreground">{m.benchmark}</p>
+        <p className="text-xs text-muted-foreground italic mt-1">Source: {m.benchmark_source}</p>
+      </div>
+    </div>
+  );
+
+  const renderFillerMetrics = (m: FillerMetrics) => (
+    <div className="space-y-4">
+      <div className="bg-primary/5 p-3 rounded-lg">
+        <p className="text-xs text-muted-foreground mb-1 font-semibold">📐 Calculation</p>
+        <p className="font-mono text-sm text-foreground">{m.calculation}</p>
+      </div>
+      
       {Object.keys(m.breakdown).length > 0 && (
         <div>
           <p className="text-xs text-muted-foreground mb-2 font-semibold">📊 Filler Word Breakdown</p>
@@ -205,7 +270,6 @@ function MetricsPanel({ paramKey, metrics }: { paramKey: string; metrics: Parame
         </div>
       )}
       
-      {/* Instances with Timestamps */}
       {m.instances.length > 0 && (
         <div>
           <p className="text-xs text-muted-foreground mb-2 font-semibold">⏱️ Filler Words with Timestamps</p>
@@ -223,7 +287,6 @@ function MetricsPanel({ paramKey, metrics }: { paramKey: string; metrics: Parame
         </div>
       )}
       
-      {/* Benchmark */}
       <div className="bg-success/5 p-3 rounded-lg">
         <p className="text-xs text-muted-foreground mb-1 font-semibold">🎯 Benchmark</p>
         <p className="text-sm text-foreground">{m.benchmark}</p>
@@ -234,13 +297,11 @@ function MetricsPanel({ paramKey, metrics }: { paramKey: string; metrics: Parame
 
   const renderPauseMetrics = (m: PauseMetrics) => (
     <div className="space-y-4">
-      {/* Calculation */}
       <div className="bg-primary/5 p-3 rounded-lg">
         <p className="text-xs text-muted-foreground mb-1 font-semibold">📐 Calculation</p>
         <p className="font-mono text-sm text-foreground">{m.calculation}</p>
       </div>
       
-      {/* Pause Statistics */}
       <div className="grid grid-cols-3 gap-2">
         <div className="bg-muted/30 p-3 rounded-lg text-center">
           <p className="text-2xl font-bold text-foreground">{m.brief_pauses}</p>
@@ -255,11 +316,10 @@ function MetricsPanel({ paramKey, metrics }: { paramKey: string; metrics: Parame
         <div className="bg-warning/10 p-3 rounded-lg text-center">
           <p className="text-2xl font-bold text-warning">{m.long_pauses}</p>
           <p className="text-xs text-muted-foreground">Long Pauses</p>
-          <p className="text-xs text-muted-foreground/70">{"(>1.5s)"}</p>
+          <p className="text-xs text-muted-foreground/70">({">"}1.5s)</p>
         </div>
       </div>
       
-      {/* Pause Instances with Timestamps */}
       {m.instances.length > 0 && (
         <div>
           <p className="text-xs text-muted-foreground mb-2 font-semibold">⏱️ Strategic Pauses with Timestamps</p>
@@ -297,7 +357,6 @@ function MetricsPanel({ paramKey, metrics }: { paramKey: string; metrics: Parame
         </div>
       )}
       
-      {/* Benchmark */}
       <div className="bg-success/5 p-3 rounded-lg">
         <p className="text-xs text-muted-foreground mb-1 font-semibold">🎯 Benchmark</p>
         <p className="text-sm text-foreground">{m.benchmark}</p>
@@ -308,13 +367,11 @@ function MetricsPanel({ paramKey, metrics }: { paramKey: string; metrics: Parame
 
   const renderSentenceMetrics = (m: SentenceMetrics) => (
     <div className="space-y-4">
-      {/* Calculation */}
       <div className="bg-primary/5 p-3 rounded-lg">
         <p className="text-xs text-muted-foreground mb-1 font-semibold">📐 Calculation</p>
         <p className="font-mono text-sm text-foreground">{m.calculation}</p>
       </div>
       
-      {/* Sentence Distribution */}
       <div className="grid grid-cols-3 gap-2">
         <div className="bg-success/10 p-3 rounded-lg text-center">
           <p className="text-2xl font-bold text-success">{m.short_sentences_count}</p>
@@ -329,11 +386,10 @@ function MetricsPanel({ paramKey, metrics }: { paramKey: string; metrics: Parame
         <div className="bg-warning/10 p-3 rounded-lg text-center">
           <p className="text-2xl font-bold text-warning">{m.long_sentences_count}</p>
           <p className="text-xs text-muted-foreground">Long</p>
-          <p className="text-xs text-muted-foreground/70">{"(>25 words)"}</p>
+          <p className="text-xs text-muted-foreground/70">({">"}25 words)</p>
         </div>
       </div>
       
-      {/* Sentence Breakdown */}
       {m.sentence_breakdown.length > 0 && (
         <div>
           <p className="text-xs text-muted-foreground mb-2 font-semibold">📝 Sentence Analysis</p>
@@ -362,7 +418,6 @@ function MetricsPanel({ paramKey, metrics }: { paramKey: string; metrics: Parame
         </div>
       )}
       
-      {/* Benchmark */}
       <div className="bg-success/5 p-3 rounded-lg">
         <p className="text-xs text-muted-foreground mb-1 font-semibold">🎯 Benchmark</p>
         <p className="text-sm text-foreground">{m.benchmark}</p>
@@ -373,13 +428,11 @@ function MetricsPanel({ paramKey, metrics }: { paramKey: string; metrics: Parame
 
   const renderSpeakingRateMetrics = (m: SpeakingRateMetrics) => (
     <div className="space-y-4">
-      {/* Calculation */}
       <div className="bg-primary/5 p-3 rounded-lg">
         <p className="text-xs text-muted-foreground mb-1 font-semibold">📐 Calculation</p>
         <p className="font-mono text-sm text-foreground">{m.calculation}</p>
       </div>
       
-      {/* Metrics Grid */}
       <div className="grid grid-cols-3 gap-2">
         <div className="bg-muted/30 p-3 rounded-lg text-center">
           <p className="text-2xl font-bold text-primary">{m.wpm}</p>
@@ -395,7 +448,6 @@ function MetricsPanel({ paramKey, metrics }: { paramKey: string; metrics: Parame
         </div>
       </div>
       
-      {/* Optimal Range */}
       <div className="bg-success/5 p-3 rounded-lg">
         <p className="text-xs text-muted-foreground mb-1 font-semibold">🎯 Optimal Range</p>
         <p className="text-sm text-foreground">{m.optimal_range}</p>
@@ -406,13 +458,11 @@ function MetricsPanel({ paramKey, metrics }: { paramKey: string; metrics: Parame
 
   const renderConfidenceMetrics = (m: ConfidenceMetrics) => (
     <div className="space-y-4">
-      {/* Calculation */}
       <div className="bg-primary/5 p-3 rounded-lg">
         <p className="text-xs text-muted-foreground mb-1 font-semibold">📐 Calculation</p>
         <p className="font-mono text-sm text-foreground">{m.calculation}</p>
       </div>
       
-      {/* Summary Stats */}
       <div className="grid grid-cols-3 gap-2">
         <div className="bg-warning/10 p-3 rounded-lg text-center">
           <p className="text-2xl font-bold text-warning">{m.hedge_count}</p>
@@ -428,7 +478,6 @@ function MetricsPanel({ paramKey, metrics }: { paramKey: string; metrics: Parame
         </div>
       </div>
       
-      {/* Language Breakdown */}
       {m.language_breakdown.length > 0 && (
         <div>
           <p className="text-xs text-muted-foreground mb-2 font-semibold">📊 Language Usage</p>
@@ -456,7 +505,6 @@ function MetricsPanel({ paramKey, metrics }: { paramKey: string; metrics: Parame
         </div>
       )}
       
-      {/* Benchmark */}
       <div className="bg-success/5 p-3 rounded-lg">
         <p className="text-xs text-muted-foreground mb-1 font-semibold">🎯 Benchmark</p>
         <p className="text-sm text-foreground">{m.benchmark}</p>
@@ -466,6 +514,9 @@ function MetricsPanel({ paramKey, metrics }: { paramKey: string; metrics: Parame
   );
 
   const renderMetricsContent = () => {
+    if (paramKey === 'decisiveness' && 'decisive_phrases' in metrics) {
+      return renderGravitasMetrics(metrics as GravitasMetrics);
+    }
     if (paramKey === 'filler_words' && 'instances' in metrics && 'breakdown' in metrics) {
       return renderFillerMetrics(metrics as FillerMetrics);
     }
@@ -679,53 +730,233 @@ function ParameterCard({
   );
 }
 
+// Helper function to draw score circle in PDF
+function drawScoreCircle(doc: jsPDF, x: number, y: number, score: number, size: number, color: number[]) {
+  const radius = size / 2;
+  
+  // Background circle
+  doc.setDrawColor(220, 220, 220);
+  doc.setLineWidth(3);
+  doc.circle(x, y, radius, 'S');
+  
+  // Score arc (simplified as filled circle)
+  doc.setFillColor(color[0], color[1], color[2]);
+  doc.setDrawColor(color[0], color[1], color[2]);
+  doc.setLineWidth(4);
+  
+  // Draw arc based on score
+  const startAngle = -90;
+  const endAngle = startAngle + (score / 100) * 360;
+  
+  // Simple arc approximation
+  doc.setDrawColor(color[0], color[1], color[2]);
+  doc.circle(x, y, radius, 'S');
+  
+  // Score text
+  doc.setFontSize(size * 0.8);
+  doc.setTextColor(color[0], color[1], color[2]);
+  doc.text(`${Math.round(score)}`, x, y + 3, { align: 'center' });
+}
+
+// Helper function to draw horizontal bar chart
+function drawBarChart(doc: jsPDF, x: number, y: number, width: number, score: number, color: number[], label: string) {
+  const barHeight = 12;
+  
+  // Background bar
+  doc.setFillColor(240, 240, 240);
+  doc.roundedRect(x, y, width, barHeight, 2, 2, 'F');
+  
+  // Score bar
+  const scoreWidth = (score / 100) * width;
+  doc.setFillColor(color[0], color[1], color[2]);
+  doc.roundedRect(x, y, scoreWidth, barHeight, 2, 2, 'F');
+  
+  // Score text
+  doc.setFontSize(9);
+  doc.setTextColor(60, 60, 60);
+  doc.text(`${Math.round(score)}`, x + width + 5, y + 9);
+  
+  // Label
+  doc.setFontSize(8);
+  doc.setTextColor(100, 100, 100);
+  doc.text(label, x, y - 2);
+}
+
 function generatePDF(assessment: Assessment) {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  
+  // Colors
+  const primaryColor = [34, 45, 90];
+  const gravitasColor = [147, 51, 234];
+  const commColor = [34, 45, 90];
+  const appColor = [245, 158, 11];
+  const storyColor = [40, 167, 69];
+  const successColor = [40, 167, 69];
+  
+  // Get gravitas data
+  const gravitasData = assessment.communication_analysis?.gravitas_analysis;
+  const gravitasScore = assessment.communication_analysis?.gravitas_score || 70;
+  
+  // ===== PAGE 1: Cover & Overview =====
+  
+  // Header gradient simulation
+  doc.setFillColor(34, 45, 90);
+  doc.rect(0, 0, pageWidth, 50, 'F');
   
   // Title
-  doc.setFontSize(24);
-  doc.setTextColor(34, 45, 90);
-  doc.text("Executive Presence Report", pageWidth / 2, 20, { align: "center" });
+  doc.setFontSize(28);
+  doc.setTextColor(255, 255, 255);
+  doc.text("Executive Presence", pageWidth / 2, 25, { align: "center" });
+  doc.setFontSize(16);
+  doc.text("Assessment Report", pageWidth / 2, 38, { align: "center" });
   
-  // Date
+  // Date & Duration
   doc.setFontSize(10);
-  doc.setTextColor(100);
-  doc.text(`Generated: ${new Date().toLocaleDateString()}`, pageWidth / 2, 28, { align: "center" });
+  doc.setTextColor(200, 200, 200);
+  doc.text(`Generated: ${new Date().toLocaleDateString()} | Video Duration: ${Math.round(assessment.video_duration_seconds / 60)} minutes`, pageWidth / 2, 48, { align: "center" });
   
-  // Overall Score
-  doc.setFontSize(14);
-  doc.setTextColor(34, 45, 90);
-  doc.text("Overall EP Score", 20, 45);
-  doc.setFontSize(36);
+  // Overall Score Section
+  doc.setFontSize(12);
+  doc.setTextColor(100, 100, 100);
+  doc.text("OVERALL EP SCORE", pageWidth / 2, 70, { align: "center" });
+  
+  // Large score display
+  doc.setFontSize(60);
   doc.setTextColor(59, 130, 246);
-  doc.text(`${Math.round(assessment.overall_score)}`, 20, 60);
-  doc.setFontSize(12);
-  doc.text("/100", 50, 60);
+  doc.text(`${Math.round(assessment.overall_score)}`, pageWidth / 2, 100, { align: "center" });
+  doc.setFontSize(20);
+  doc.setTextColor(150, 150, 150);
+  doc.text("/100", pageWidth / 2 + 35, 100);
   
-  // Bucket Scores
-  doc.setFontSize(12);
-  doc.setTextColor(34, 45, 90);
-  let yPos = 75;
+  // Score level
+  const overallLevel = getScoreLevel(assessment.overall_score);
+  doc.setFontSize(14);
+  if (assessment.overall_score >= 70) {
+    doc.setTextColor(40, 167, 69);
+  } else if (assessment.overall_score >= 50) {
+    doc.setTextColor(245, 158, 11);
+  } else {
+    doc.setTextColor(220, 53, 69);
+  }
+  doc.text(overallLevel.label, pageWidth / 2, 115, { align: "center" });
   
+  // Bucket scores visualization
   const buckets = [
-    { name: "Communication", score: assessment.communication_score, weight: "40%" },
-    { name: "Appearance & Nonverbal", score: assessment.appearance_score, weight: "35%" },
-    { name: "Storytelling", score: assessment.storytelling_score, weight: "25%" },
+    { name: "Gravitas", score: gravitasScore, weight: "25%", color: gravitasColor },
+    { name: "Communication", score: assessment.communication_score, weight: "30%", color: commColor },
+    { name: "Appearance", score: assessment.appearance_score, weight: "25%", color: appColor },
+    { name: "Storytelling", score: assessment.storytelling_score, weight: "20%", color: storyColor },
   ];
   
+  let yPos = 140;
+  const barWidth = 100;
+  const barX = 50;
+  
+  doc.setFontSize(12);
+  doc.setTextColor(34, 45, 90);
+  doc.text("DIMENSION BREAKDOWN", pageWidth / 2, yPos - 10, { align: "center" });
+  
   buckets.forEach((bucket) => {
-    doc.setFontSize(11);
-    doc.text(`${bucket.name} (${bucket.weight}): ${Math.round(bucket.score)}/100`, 20, yPos);
-    yPos += 8;
+    drawBarChart(doc, barX, yPos, barWidth, bucket.score, bucket.color, `${bucket.name} (${bucket.weight})`);
+    yPos += 25;
   });
   
-  // Communication Analysis
-  yPos += 10;
-  doc.setFontSize(16);
-  doc.setTextColor(34, 45, 90);
-  doc.text("Communication Analysis", 20, yPos);
-  yPos += 10;
+  // Summary box
+  const storytellingData = assessment.storytelling_analysis as StorytellingData;
+  if (storytellingData?.summary) {
+    doc.setFillColor(245, 247, 250);
+    doc.roundedRect(15, yPos + 10, pageWidth - 30, 40, 3, 3, 'F');
+    
+    doc.setFontSize(10);
+    doc.setTextColor(34, 45, 90);
+    doc.text("SUMMARY", 20, yPos + 22);
+    
+    doc.setFontSize(9);
+    doc.setTextColor(80, 80, 80);
+    const summaryLines = doc.splitTextToSize(storytellingData.summary, pageWidth - 45);
+    doc.text(summaryLines.slice(0, 3), 20, yPos + 32);
+  }
+  
+  // Footer
+  doc.setFontSize(8);
+  doc.setTextColor(150, 150, 150);
+  doc.text("Executive Presence Assessment | Powered by AI Analysis", pageWidth / 2, pageHeight - 10, { align: "center" });
+  
+  // ===== PAGE 2: Gravitas Analysis =====
+  doc.addPage();
+  
+  // Header
+  doc.setFillColor(147, 51, 234);
+  doc.rect(0, 0, pageWidth, 30, 'F');
+  doc.setFontSize(18);
+  doc.setTextColor(255, 255, 255);
+  doc.text("GRAVITAS ANALYSIS", 20, 20);
+  doc.setFontSize(12);
+  doc.text(`Score: ${Math.round(gravitasScore)}/100`, pageWidth - 20, 20, { align: "right" });
+  
+  yPos = 45;
+  
+  if (gravitasData?.parameters) {
+    const gravitasParams = gravitasData.parameters;
+    const gravitasTableData: string[][] = [];
+    
+    Object.entries(gravitasParams).forEach(([key, param]) => {
+      const paramData = param as ParameterData;
+      gravitasTableData.push([
+        parameterLabels[key] || key,
+        `${Math.round(paramData.score)}/100`,
+        paramData.raw_value || '-',
+        paramData.observation.substring(0, 60) + (paramData.observation.length > 60 ? '...' : '')
+      ]);
+    });
+    
+    autoTable(doc, {
+      startY: yPos,
+      head: [['Parameter', 'Score', 'Value', 'Observation']],
+      body: gravitasTableData,
+      styles: { fontSize: 8, cellPadding: 3 },
+      headStyles: { fillColor: [147, 51, 234] },
+      alternateRowStyles: { fillColor: [250, 245, 255] },
+      columnStyles: {
+        0: { cellWidth: 40 },
+        1: { cellWidth: 20 },
+        2: { cellWidth: 40 },
+        3: { cellWidth: 'auto' },
+      },
+    });
+    
+    yPos = (doc as any).lastAutoTable?.finalY + 10 || yPos + 50;
+    
+    // Coaching recommendations for gravitas
+    doc.setFontSize(11);
+    doc.setTextColor(147, 51, 234);
+    doc.text("Coaching Recommendations", 20, yPos);
+    yPos += 8;
+    
+    Object.entries(gravitasParams).slice(0, 3).forEach(([key, param]) => {
+      const paramData = param as ParameterData;
+      doc.setFontSize(9);
+      doc.setTextColor(60, 60, 60);
+      const coachLines = doc.splitTextToSize(`• ${parameterLabels[key] || key}: ${paramData.coaching}`, pageWidth - 40);
+      doc.text(coachLines.slice(0, 2), 20, yPos);
+      yPos += coachLines.slice(0, 2).length * 5 + 3;
+    });
+  }
+  
+  // ===== PAGE 3: Communication Analysis =====
+  doc.addPage();
+  
+  doc.setFillColor(34, 45, 90);
+  doc.rect(0, 0, pageWidth, 30, 'F');
+  doc.setFontSize(18);
+  doc.setTextColor(255, 255, 255);
+  doc.text("COMMUNICATION ANALYSIS", 20, 20);
+  doc.setFontSize(12);
+  doc.text(`Score: ${Math.round(assessment.communication_score)}/100`, pageWidth - 20, 20, { align: "right" });
+  
+  yPos = 45;
   
   const commParams = assessment.communication_analysis?.parameters || {};
   const commData: string[][] = [];
@@ -736,7 +967,7 @@ function generatePDF(assessment: Assessment) {
       parameterLabels[key] || key,
       `${Math.round(paramData.score)}/100`,
       paramData.raw_value || '-',
-      paramData.observation.substring(0, 80) + (paramData.observation.length > 80 ? '...' : '')
+      paramData.observation.substring(0, 60) + (paramData.observation.length > 60 ? '...' : '')
     ]);
   });
   
@@ -744,8 +975,9 @@ function generatePDF(assessment: Assessment) {
     startY: yPos,
     head: [['Parameter', 'Score', 'Value', 'Observation']],
     body: commData,
-    styles: { fontSize: 8, cellPadding: 2 },
+    styles: { fontSize: 8, cellPadding: 3 },
     headStyles: { fillColor: [34, 45, 90] },
+    alternateRowStyles: { fillColor: [245, 247, 250] },
     columnStyles: {
       0: { cellWidth: 35 },
       1: { cellWidth: 20 },
@@ -757,33 +989,45 @@ function generatePDF(assessment: Assessment) {
   // Filler Words Detail
   const fillerMetrics = commParams.filler_words?.metrics as FillerMetrics | undefined;
   if (fillerMetrics?.instances?.length > 0) {
-    doc.addPage();
-    doc.setFontSize(16);
-    doc.setTextColor(34, 45, 90);
-    doc.text("Filler Words Detail", 20, 20);
+    yPos = (doc as any).lastAutoTable?.finalY + 15 || 150;
     
-    const fillerData = fillerMetrics.instances.map(f => [f.word, f.timestamp]);
+    doc.setFontSize(11);
+    doc.setTextColor(220, 53, 69);
+    doc.text("Filler Words Detail (with timestamps)", 20, yPos);
+    
+    const fillerData = fillerMetrics.instances.slice(0, 15).map(f => [f.word, f.timestamp]);
     
     autoTable(doc, {
-      startY: 30,
+      startY: yPos + 5,
       head: [['Filler Word', 'Timestamp']],
       body: fillerData,
-      styles: { fontSize: 9 },
+      styles: { fontSize: 8 },
       headStyles: { fillColor: [220, 53, 69] },
+      columnStyles: { 0: { cellWidth: 40 }, 1: { cellWidth: 40 } },
+      margin: { left: 20 },
+      tableWidth: 100,
     });
   }
+  
+  // ===== PAGE 4: Pauses & Sentence Analysis =====
+  doc.addPage();
+  
+  doc.setFillColor(40, 167, 69);
+  doc.rect(0, 0, pageWidth, 30, 'F');
+  doc.setFontSize(18);
+  doc.setTextColor(255, 255, 255);
+  doc.text("DETAILED METRICS", 20, 20);
+  
+  yPos = 45;
   
   // Pauses Detail
   const pauseMetrics = commParams.strategic_pauses?.metrics as PauseMetrics | undefined;
   if (pauseMetrics?.instances?.length > 0) {
-    const currentY = (doc as any).lastAutoTable?.finalY || 20;
-    if (currentY > 200) doc.addPage();
+    doc.setFontSize(11);
+    doc.setTextColor(40, 167, 69);
+    doc.text("Strategic Pauses Timeline", 20, yPos);
     
-    doc.setFontSize(16);
-    doc.setTextColor(34, 45, 90);
-    doc.text("Strategic Pauses Detail", 20, currentY > 200 ? 20 : currentY + 15);
-    
-    const pauseData = pauseMetrics.instances.map(p => [
+    const pauseData = pauseMetrics.instances.slice(0, 12).map(p => [
       p.timestamp,
       p.after_word,
       `${p.duration_seconds}s`,
@@ -791,19 +1035,85 @@ function generatePDF(assessment: Assessment) {
     ]);
     
     autoTable(doc, {
-      startY: currentY > 200 ? 30 : currentY + 25,
+      startY: yPos + 5,
       head: [['Time', 'After Word', 'Duration', 'Type']],
       body: pauseData,
-      styles: { fontSize: 9 },
+      styles: { fontSize: 8 },
       headStyles: { fillColor: [40, 167, 69] },
+      alternateRowStyles: { fillColor: [240, 255, 244] },
     });
+    
+    yPos = (doc as any).lastAutoTable?.finalY + 15 || yPos + 80;
   }
   
-  // Appearance Analysis
+  // Sentence Analysis
+  const sentenceMetrics = commParams.verbal_clarity?.metrics as SentenceMetrics | undefined;
+  if (sentenceMetrics) {
+    doc.setFontSize(11);
+    doc.setTextColor(34, 45, 90);
+    doc.text("Sentence Clarity Analysis", 20, yPos);
+    yPos += 10;
+    
+    // Stats boxes
+    const boxWidth = 50;
+    const boxHeight = 25;
+    const boxY = yPos;
+    
+    // Short sentences
+    doc.setFillColor(220, 252, 231);
+    doc.roundedRect(20, boxY, boxWidth, boxHeight, 2, 2, 'F');
+    doc.setFontSize(16);
+    doc.setTextColor(40, 167, 69);
+    doc.text(`${sentenceMetrics.short_sentences_count}`, 45, boxY + 12, { align: 'center' });
+    doc.setFontSize(7);
+    doc.setTextColor(100, 100, 100);
+    doc.text('Short (≤15 words)', 45, boxY + 20, { align: 'center' });
+    
+    // Medium sentences
+    doc.setFillColor(254, 243, 199);
+    doc.roundedRect(75, boxY, boxWidth, boxHeight, 2, 2, 'F');
+    doc.setFontSize(16);
+    doc.setTextColor(245, 158, 11);
+    doc.text(`${sentenceMetrics.medium_sentences_count}`, 100, boxY + 12, { align: 'center' });
+    doc.setFontSize(7);
+    doc.setTextColor(100, 100, 100);
+    doc.text('Medium (16-25)', 100, boxY + 20, { align: 'center' });
+    
+    // Long sentences
+    doc.setFillColor(254, 226, 226);
+    doc.roundedRect(130, boxY, boxWidth, boxHeight, 2, 2, 'F');
+    doc.setFontSize(16);
+    doc.setTextColor(220, 53, 69);
+    doc.text(`${sentenceMetrics.long_sentences_count}`, 155, boxY + 12, { align: 'center' });
+    doc.setFontSize(7);
+    doc.setTextColor(100, 100, 100);
+    doc.text('Long (>25 words)', 155, boxY + 20, { align: 'center' });
+    
+    yPos = boxY + 35;
+    
+    doc.setFontSize(9);
+    doc.setTextColor(60, 60, 60);
+    doc.text(`Calculation: ${sentenceMetrics.calculation}`, 20, yPos);
+    yPos += 6;
+    doc.text(`Benchmark: ${sentenceMetrics.benchmark}`, 20, yPos);
+  }
+  
+  // ===== PAGE 5: Appearance & Storytelling =====
   doc.addPage();
-  doc.setFontSize(16);
-  doc.setTextColor(34, 45, 90);
-  doc.text("Appearance & Nonverbal Analysis", 20, 20);
+  
+  doc.setFillColor(245, 158, 11);
+  doc.rect(0, 0, pageWidth, 30, 'F');
+  doc.setFontSize(18);
+  doc.setTextColor(255, 255, 255);
+  doc.text("APPEARANCE & STORYTELLING", 20, 20);
+  
+  yPos = 45;
+  
+  // Appearance
+  doc.setFontSize(12);
+  doc.setTextColor(245, 158, 11);
+  doc.text(`Appearance & Nonverbal | Score: ${Math.round(assessment.appearance_score)}/100`, 20, yPos);
+  yPos += 8;
   
   const appParams = assessment.appearance_analysis?.parameters || {};
   const appData: string[][] = [];
@@ -813,23 +1123,26 @@ function generatePDF(assessment: Assessment) {
     appData.push([
       parameterLabels[key] || key,
       `${Math.round(paramData.score)}/100`,
-      paramData.observation.substring(0, 100) + (paramData.observation.length > 100 ? '...' : '')
+      paramData.observation.substring(0, 70) + (paramData.observation.length > 70 ? '...' : '')
     ]);
   });
   
   autoTable(doc, {
-    startY: 30,
+    startY: yPos,
     head: [['Parameter', 'Score', 'Observation']],
     body: appData,
-    styles: { fontSize: 8, cellPadding: 2 },
+    styles: { fontSize: 8, cellPadding: 3 },
     headStyles: { fillColor: [245, 158, 11] },
+    alternateRowStyles: { fillColor: [255, 251, 235] },
   });
   
-  // Storytelling Analysis
-  const storyY = (doc as any).lastAutoTable?.finalY || 100;
-  doc.setFontSize(16);
-  doc.setTextColor(34, 45, 90);
-  doc.text("Storytelling Analysis", 20, storyY + 15);
+  yPos = (doc as any).lastAutoTable?.finalY + 15 || 140;
+  
+  // Storytelling
+  doc.setFontSize(12);
+  doc.setTextColor(40, 167, 69);
+  doc.text(`Storytelling | Score: ${Math.round(assessment.storytelling_score)}/100`, 20, yPos);
+  yPos += 8;
   
   const storyParams = assessment.storytelling_analysis?.parameters || {};
   const storyData: string[][] = [];
@@ -839,62 +1152,97 @@ function generatePDF(assessment: Assessment) {
     storyData.push([
       parameterLabels[key] || key,
       `${Math.round(paramData.score)}/100`,
-      paramData.observation.substring(0, 100) + (paramData.observation.length > 100 ? '...' : '')
+      paramData.observation.substring(0, 70) + (paramData.observation.length > 70 ? '...' : '')
     ]);
   });
   
   autoTable(doc, {
-    startY: storyY + 25,
+    startY: yPos,
     head: [['Parameter', 'Score', 'Observation']],
     body: storyData,
-    styles: { fontSize: 8, cellPadding: 2 },
-    headStyles: { fillColor: [52, 168, 83] },
+    styles: { fontSize: 8, cellPadding: 3 },
+    headStyles: { fillColor: [40, 167, 69] },
+    alternateRowStyles: { fillColor: [240, 255, 244] },
   });
   
-  // Summary Page
+  // ===== PAGE 6: Summary & Recommendations =====
   doc.addPage();
-  doc.setFontSize(16);
-  doc.setTextColor(34, 45, 90);
-  doc.text("Summary & Recommendations", 20, 20);
   
-  const storytellingData = assessment.storytelling_analysis as StorytellingData;
+  doc.setFillColor(34, 45, 90);
+  doc.rect(0, 0, pageWidth, 30, 'F');
+  doc.setFontSize(18);
+  doc.setTextColor(255, 255, 255);
+  doc.text("SUMMARY & RECOMMENDATIONS", 20, 20);
   
-  if (storytellingData?.summary) {
-    doc.setFontSize(11);
-    doc.setTextColor(60);
-    const summaryLines = doc.splitTextToSize(storytellingData.summary, pageWidth - 40);
-    doc.text(summaryLines, 20, 35);
-  }
+  yPos = 50;
   
+  // Top Strengths
   if (storytellingData?.top_strengths?.length > 0) {
-    const strengthY = storytellingData?.summary ? 70 : 35;
-    doc.setFontSize(13);
-    doc.setTextColor(40, 167, 69);
-    doc.text("Top Strengths:", 20, strengthY);
+    doc.setFillColor(220, 252, 231);
+    doc.roundedRect(15, yPos - 5, pageWidth - 30, 10 + (storytellingData.top_strengths.length * 8), 3, 3, 'F');
     
-    doc.setFontSize(10);
-    doc.setTextColor(60);
+    doc.setFontSize(11);
+    doc.setTextColor(40, 167, 69);
+    doc.text("★ TOP STRENGTHS", 20, yPos + 5);
+    
+    doc.setFontSize(9);
+    doc.setTextColor(60, 60, 60);
     storytellingData.top_strengths.forEach((strength, i) => {
-      doc.text(`• ${strength}`, 25, strengthY + 10 + (i * 7));
+      doc.text(`• ${strength}`, 25, yPos + 15 + (i * 8));
     });
+    
+    yPos += 20 + (storytellingData.top_strengths.length * 8);
   }
   
+  // Priority Development
   if (storytellingData?.priority_development) {
-    doc.setFontSize(13);
-    doc.setTextColor(245, 158, 11);
-    doc.text("Priority Development Area:", 20, 110);
+    doc.setFillColor(254, 243, 199);
+    doc.roundedRect(15, yPos, pageWidth - 30, 30, 3, 3, 'F');
     
-    doc.setFontSize(10);
-    doc.setTextColor(60);
-    const devLines = doc.splitTextToSize(storytellingData.priority_development, pageWidth - 40);
-    doc.text(devLines, 20, 120);
+    doc.setFontSize(11);
+    doc.setTextColor(245, 158, 11);
+    doc.text("⚡ PRIORITY FOCUS AREA", 20, yPos + 10);
+    
+    doc.setFontSize(9);
+    doc.setTextColor(60, 60, 60);
+    const devLines = doc.splitTextToSize(storytellingData.priority_development, pageWidth - 45);
+    doc.text(devLines.slice(0, 2), 20, yPos + 20);
+    
+    yPos += 40;
   }
+  
+  // Key coaching points
+  doc.setFontSize(11);
+  doc.setTextColor(34, 45, 90);
+  doc.text("KEY COACHING RECOMMENDATIONS", 20, yPos);
+  yPos += 10;
+  
+  const allParams = { ...commParams, ...appParams, ...storyParams };
+  let coachCount = 0;
+  
+  Object.entries(allParams).forEach(([key, param]) => {
+    if (coachCount >= 5) return;
+    const paramData = param as ParameterData;
+    if (paramData.score < 75) {
+      doc.setFontSize(8);
+      doc.setTextColor(80, 80, 80);
+      const coachText = `${parameterLabels[key] || key}: ${paramData.coaching}`;
+      const lines = doc.splitTextToSize(`• ${coachText}`, pageWidth - 40);
+      doc.text(lines.slice(0, 2), 20, yPos);
+      yPos += lines.slice(0, 2).length * 4 + 4;
+      coachCount++;
+    }
+  });
   
   // Disclaimer
-  doc.setFontSize(8);
-  doc.setTextColor(150);
-  doc.text("This assessment is a point-in-time analysis based on a single video sample.", 20, 280);
+  doc.setFillColor(245, 245, 245);
+  doc.roundedRect(15, pageHeight - 35, pageWidth - 30, 20, 3, 3, 'F');
+  doc.setFontSize(7);
+  doc.setTextColor(120, 120, 120);
+  doc.text("⚠️ DISCLAIMER: This assessment provides a point-in-time analysis based on a single video sample.", 20, pageHeight - 27);
+  doc.text("It is not a personality diagnosis or comprehensive evaluation. Use this feedback as one data point in your leadership development journey.", 20, pageHeight - 22);
   
+  // Save
   doc.save(`EP-Report-${new Date().toISOString().split('T')[0]}.pdf`);
   toast.success("PDF report downloaded successfully!");
 }
@@ -907,6 +1255,10 @@ export function AssessmentReport({ assessment, onNewAssessment }: AssessmentRepo
     "Your Executive Presence assessment is complete. Review the detailed feedback below.";
   const topStrengths = storytellingData?.top_strengths || [];
   const priorityDevelopment = storytellingData?.priority_development;
+  
+  // Get gravitas data from communication_analysis
+  const gravitasData = assessment.communication_analysis?.gravitas_analysis;
+  const gravitasScore = assessment.communication_analysis?.gravitas_score || 70;
 
   const overallLevel = getScoreLevel(assessment.overall_score);
 
@@ -977,27 +1329,34 @@ export function AssessmentReport({ assessment, onNewAssessment }: AssessmentRepo
               </div>
             )}
             
-            <div className="grid grid-cols-3 gap-4 pt-4 border-t border-border">
+            <div className="grid grid-cols-4 gap-3 pt-4 border-t border-border">
               <div className="text-center">
-                <div className="text-2xl font-display font-bold text-foreground">
+                <div className="text-xl font-display font-bold text-foreground">
+                  {Math.round(gravitasScore)}
+                </div>
+                <div className="text-xs text-muted-foreground">Gravitas</div>
+                <div className="text-xs text-muted-foreground/70">25%</div>
+              </div>
+              <div className="text-center">
+                <div className="text-xl font-display font-bold text-foreground">
                   {Math.round(assessment.communication_score)}
                 </div>
                 <div className="text-xs text-muted-foreground">Communication</div>
-                <div className="text-xs text-muted-foreground/70">40% weight</div>
+                <div className="text-xs text-muted-foreground/70">30%</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-display font-bold text-foreground">
+                <div className="text-xl font-display font-bold text-foreground">
                   {Math.round(assessment.appearance_score)}
                 </div>
                 <div className="text-xs text-muted-foreground">Appearance</div>
-                <div className="text-xs text-muted-foreground/70">35% weight</div>
+                <div className="text-xs text-muted-foreground/70">25%</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-display font-bold text-foreground">
+                <div className="text-xl font-display font-bold text-foreground">
                   {Math.round(assessment.storytelling_score)}
                 </div>
                 <div className="text-xs text-muted-foreground">Storytelling</div>
-                <div className="text-xs text-muted-foreground/70">25% weight</div>
+                <div className="text-xs text-muted-foreground/70">20%</div>
               </div>
             </div>
           </div>
@@ -1005,13 +1364,25 @@ export function AssessmentReport({ assessment, onNewAssessment }: AssessmentRepo
       </div>
 
       <div className="space-y-4">
+        {/* Gravitas Section - NEW */}
+        {gravitasData && (
+          <BucketSection
+            title="Gravitas"
+            icon={bucketIcons.gravitas}
+            color={bucketColors.gravitas}
+            score={gravitasScore}
+            data={gravitasData}
+            weight="25%"
+          />
+        )}
+        
         <BucketSection
           title="Communication"
           icon={bucketIcons.communication}
           color={bucketColors.communication}
           score={assessment.communication_score}
           data={assessment.communication_analysis}
-          weight="40%"
+          weight="30%"
         />
         
         <BucketSection
@@ -1020,7 +1391,7 @@ export function AssessmentReport({ assessment, onNewAssessment }: AssessmentRepo
           color={bucketColors.appearance}
           score={assessment.appearance_score}
           data={assessment.appearance_analysis}
-          weight="35%"
+          weight="25%"
         />
         
         <BucketSection
@@ -1029,7 +1400,7 @@ export function AssessmentReport({ assessment, onNewAssessment }: AssessmentRepo
           color={bucketColors.storytelling}
           score={assessment.storytelling_score}
           data={assessment.storytelling_analysis}
-          weight="25%"
+          weight="20%"
         />
       </div>
 
