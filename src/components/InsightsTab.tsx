@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { TrendingUp, Target, Award, BookOpen, Lightbulb, ChevronRight, Play, ExternalLink } from "lucide-react";
+import { TrendingUp, Target, Award, BookOpen, Lightbulb, ChevronRight, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
@@ -78,7 +78,7 @@ const VIDEO_RESOURCES = [
     speaker: "Brené Brown",
     duration: "20 min",
     category: "Leadership",
-    url: "https://www.ted.com/talks/brene_brown_the_power_of_vulnerability",
+    embedId: "brene_brown_the_power_of_vulnerability",
   },
   {
     id: "2",
@@ -86,7 +86,7 @@ const VIDEO_RESOURCES = [
     speaker: "Amy Cuddy",
     duration: "21 min",
     category: "Presence",
-    url: "https://www.ted.com/talks/amy_cuddy_your_body_language_may_shape_who_you_are",
+    embedId: "amy_cuddy_your_body_language_may_shape_who_you_are",
   },
   {
     id: "3",
@@ -94,7 +94,7 @@ const VIDEO_RESOURCES = [
     speaker: "Simon Sinek",
     duration: "18 min",
     category: "Vision",
-    url: "https://www.ted.com/talks/simon_sinek_how_great_leaders_inspire_action",
+    embedId: "simon_sinek_how_great_leaders_inspire_action",
   },
   {
     id: "4",
@@ -102,7 +102,39 @@ const VIDEO_RESOURCES = [
     speaker: "Dan Pink",
     duration: "18 min",
     category: "Leadership",
-    url: "https://www.ted.com/talks/dan_pink_the_puzzle_of_motivation",
+    embedId: "dan_pink_the_puzzle_of_motivation",
+  },
+  {
+    id: "5",
+    title: "How to Speak So That People Want to Listen",
+    speaker: "Julian Treasure",
+    duration: "10 min",
+    category: "Communication",
+    embedId: "julian_treasure_how_to_speak_so_that_people_want_to_listen",
+  },
+  {
+    id: "6",
+    title: "The Happy Secret to Better Work",
+    speaker: "Shawn Achor",
+    duration: "12 min",
+    category: "Leadership",
+    embedId: "shawn_achor_the_happy_secret_to_better_work",
+  },
+  {
+    id: "7",
+    title: "The Skill of Self Confidence",
+    speaker: "Dr. Ivan Joseph",
+    duration: "13 min",
+    category: "Presence",
+    embedId: "ivan_joseph_the_skill_of_self_confidence",
+  },
+  {
+    id: "8",
+    title: "Grit: The Power of Passion and Perseverance",
+    speaker: "Angela Lee Duckworth",
+    duration: "6 min",
+    category: "Leadership",
+    embedId: "angela_lee_duckworth_grit_the_power_of_passion_and_perseverance",
   },
 ];
 
@@ -129,6 +161,29 @@ function getCategoryColor(category: string) {
 export function InsightsTab() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [dailyTip, setDailyTip] = useState<Tip | null>(null);
+  const [selectedVideo, setSelectedVideo] = useState<typeof VIDEO_RESOURCES[0] | null>(null);
+
+  // Get current week number of the year
+  const getWeekNumber = () => {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), 0, 1);
+    const diff = now.getTime() - start.getTime();
+    const oneWeek = 1000 * 60 * 60 * 24 * 7;
+    return Math.floor(diff / oneWeek);
+  };
+
+  // Get weekly videos (rotates every week)
+  const getWeeklyVideos = () => {
+    const weekNum = getWeekNumber();
+    const startIndex = (weekNum * 4) % VIDEO_RESOURCES.length;
+    const videos = [];
+    for (let i = 0; i < 4; i++) {
+      videos.push(VIDEO_RESOURCES[(startIndex + i) % VIDEO_RESOURCES.length]);
+    }
+    return videos;
+  };
+
+  const weeklyVideos = getWeeklyVideos();
 
   useEffect(() => {
     // Get a "daily" tip based on the date
@@ -235,19 +290,49 @@ export function InsightsTab() {
 
       {/* Recommended Videos Section */}
       <div className="space-y-4">
-        <h3 className="font-display text-lg font-semibold text-foreground flex items-center gap-2">
-          <Play className="w-5 h-5 text-primary" />
-          Recommended Viewing
-        </h3>
+        <div className="flex items-center justify-between">
+          <h3 className="font-display text-lg font-semibold text-foreground flex items-center gap-2">
+            <Play className="w-5 h-5 text-primary" />
+            This Week's Recommended Viewing
+          </h3>
+          <span className="text-xs text-muted-foreground">Updates weekly</span>
+        </div>
+
+        {/* Embedded Video Player */}
+        {selectedVideo && (
+          <div className="bg-card border border-border rounded-xl overflow-hidden">
+            <div className="aspect-video">
+              <iframe
+                src={`https://embed.ted.com/talks/${selectedVideo.embedId}`}
+                width="100%"
+                height="100%"
+                frameBorder="0"
+                allowFullScreen
+                allow="autoplay; fullscreen; encrypted-media"
+                className="w-full h-full"
+              />
+            </div>
+            <div className="p-4 flex items-center justify-between">
+              <div>
+                <h4 className="font-medium text-foreground">{selectedVideo.title}</h4>
+                <p className="text-sm text-muted-foreground">{selectedVideo.speaker} • {selectedVideo.duration}</p>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => setSelectedVideo(null)}>
+                Close
+              </Button>
+            </div>
+          </div>
+        )}
         
         <div className="grid sm:grid-cols-2 gap-4">
-          {VIDEO_RESOURCES.map((video) => (
-            <a
+          {weeklyVideos.map((video) => (
+            <button
               key={video.id}
-              href={video.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="group p-4 border border-border rounded-xl bg-card hover:border-primary/50 transition-all flex items-center gap-4"
+              onClick={() => setSelectedVideo(video)}
+              className={cn(
+                "group p-4 border border-border rounded-xl bg-card hover:border-primary/50 transition-all flex items-center gap-4 text-left w-full",
+                selectedVideo?.id === video.id && "border-primary bg-primary/5"
+              )}
             >
               <div className="w-12 h-12 rounded-lg bg-destructive/10 flex items-center justify-center flex-shrink-0 group-hover:bg-destructive/20 transition-colors">
                 <Play className="w-5 h-5 text-destructive" />
@@ -260,8 +345,8 @@ export function InsightsTab() {
                   {video.speaker} • {video.duration}
                 </p>
               </div>
-              <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
-            </a>
+              <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+            </button>
           ))}
         </div>
       </div>
@@ -281,8 +366,8 @@ export function InsightsTab() {
           <div className="text-xs text-muted-foreground">Videos</div>
         </div>
         <div className="text-center p-4 bg-warning/5 rounded-xl">
-          <div className="text-2xl font-bold text-warning">Daily</div>
-          <div className="text-xs text-muted-foreground">New Tips</div>
+          <div className="text-2xl font-bold text-warning">Weekly</div>
+          <div className="text-xs text-muted-foreground">Rotation</div>
         </div>
       </div>
     </div>
