@@ -302,16 +302,17 @@ export function BoardroomSimulator() {
   if (!selectedScenario) {
     return (
       <div className="space-y-6 animate-fade-in">
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full text-primary text-sm font-medium">
+        <div className="text-center space-y-4">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-accent/10 rounded-full text-accent text-sm font-medium">
             <Crown className="w-4 h-4" />
-            Boardroom Simulator
+            AI-Powered Analysis with Research Backing
           </div>
-          <h2 className="font-display text-2xl font-bold text-foreground">
-            Master High-Stakes Situations
-          </h2>
-          <p className="text-muted-foreground max-w-lg mx-auto">
-            Practice responding to challenging executive scenarios. Speak your response and get AI-powered feedback on your presence, composure, and strategic thinking.
+          <h1 className="font-display text-3xl md:text-4xl font-bold">
+            <span className="text-foreground">Master</span>{" "}
+            <span className="text-accent">High-Stakes Situations</span>
+          </h1>
+          <p className="text-muted-foreground max-w-xl mx-auto text-base">
+            Practice responding to challenging executive scenarios. Speak your response and receive detailed, research-backed feedback on your presence, composure, and strategic thinking.
           </p>
         </div>
 
