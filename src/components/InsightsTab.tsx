@@ -145,6 +145,21 @@ export function InsightsTab() {
 
   return (
     <div className="space-y-8 animate-fade-in">
+      {/* Header Section */}
+      <div className="text-center space-y-4">
+        <div className="inline-flex items-center gap-2 px-4 py-2 bg-accent/10 rounded-full text-accent text-sm font-medium">
+          <Lightbulb className="w-4 h-4" />
+          AI-Powered Analysis with Research Backing
+        </div>
+        <h1 className="font-display text-3xl md:text-4xl font-bold">
+          <span className="text-foreground">Executive</span>{" "}
+          <span className="text-accent">Presence Insights</span>
+        </h1>
+        <p className="text-muted-foreground max-w-xl mx-auto text-base">
+          Daily tips, expert advice, and curated resources to enhance your communication, appearance, and storytelling skills.
+        </p>
+      </div>
+
       {/* Daily Tip */}
       {dailyTip && (
         <div className="bg-gradient-card border border-primary/30 rounded-2xl p-6 shadow-lg">
