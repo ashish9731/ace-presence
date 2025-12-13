@@ -12,6 +12,39 @@ serve(async (req) => {
   }
 
   try {
+    // Extract and verify the user from the authorization header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.error('Missing Authorization header');
+      return new Response(JSON.stringify({ error: 'Unauthorized: Missing authorization header' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const openaiKey = Deno.env.get('OPENAI_API_KEY')!;
+    
+    // Create a client with the user's token to verify their identity
+    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+    
+    // Get the authenticated user
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+    
+    if (authError || !user) {
+      console.error('Auth error:', authError?.message || 'No user found');
+      return new Response(JSON.stringify({ error: 'Unauthorized: Invalid token' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
+    console.log('Authenticated user:', user.id);
+
     const body = await req.json();
     const { assessmentId, videoPath } = body;
 
@@ -43,11 +76,31 @@ serve(async (req) => {
       });
     }
     
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const openaiKey = Deno.env.get('OPENAI_API_KEY')!;
-    
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    // Create service role client for database operations
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Verify the user owns the assessment
+    const { data: assessment, error: assessmentError } = await supabase
+      .from('assessments')
+      .select('user_id')
+      .eq('id', assessmentId)
+      .single();
+
+    if (assessmentError || !assessment) {
+      console.error('Assessment not found:', assessmentId);
+      return new Response(JSON.stringify({ error: 'Assessment not found' }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (assessment.user_id !== user.id) {
+      console.error('User does not own assessment:', { userId: user.id, assessmentUserId: assessment.user_id });
+      return new Response(JSON.stringify({ error: 'Forbidden: You do not own this assessment' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     // Update status to analyzing
     await supabase

@@ -12,6 +12,39 @@ serve(async (req) => {
   }
 
   try {
+    // Extract and verify the user from the authorization header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.error('Missing Authorization header');
+      return new Response(JSON.stringify({ error: 'Unauthorized: Missing authorization header' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const openaiKey = Deno.env.get('OPENAI_API_KEY')!;
+    
+    // Create a client with the user's token to verify their identity
+    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+    
+    // Get the authenticated user
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+    
+    if (authError || !user) {
+      console.error('Auth error:', authError?.message || 'No user found');
+      return new Response(JSON.stringify({ error: 'Unauthorized: Invalid token' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
+    console.log('Authenticated user:', user.id);
+
     const body = await req.json();
     const { audioPath, scenario, duration } = body;
 
@@ -58,12 +91,18 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    // Verify the user owns the audio file by checking the path starts with their user ID
+    if (!audioPath.startsWith(`${user.id}/`)) {
+      console.error('User does not own audio file:', { userId: user.id, audioPath });
+      return new Response(JSON.stringify({ error: 'Forbidden: You do not own this audio file' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
     
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const openaiKey = Deno.env.get('OPENAI_API_KEY')!;
-    
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    // Create service role client for storage operations
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     console.log('Starting boardroom analysis for scenario:', scenario.id);
 
