@@ -4,6 +4,7 @@ import { Mic, MicOff, Play, Pause, RotateCcw, ChevronRight, Download, Crown, Tim
 import { cn } from "@/lib/utils";
 import { ScoreRing } from "./ScoreRing";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -101,6 +102,7 @@ function getDifficultyColor(difficulty: string) {
 }
 
 export function BoardroomSimulator() {
+  const { user } = useAuth();
   const [selectedScenario, setSelectedScenario] = useState<Scenario | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [isPreparing, setIsPreparing] = useState(false);
@@ -186,13 +188,13 @@ export function BoardroomSimulator() {
   };
 
   const analyzeResponse = async (audioBlob: Blob) => {
-    if (!selectedScenario) return;
+    if (!selectedScenario || !user) return;
     
     setIsAnalyzing(true);
     
     try {
-      // Upload audio for transcription
-      const fileName = `boardroom/${Date.now()}-${Math.random().toString(36).substring(7)}.webm`;
+      // Upload audio for transcription with user-specific folder
+      const fileName = `${user.id}/boardroom-${Date.now()}-${Math.random().toString(36).substring(7)}.webm`;
       
       const { error: uploadError } = await supabase.storage
         .from("videos")

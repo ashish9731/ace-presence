@@ -29,6 +29,7 @@ export type Database = {
           storytelling_analysis: Json | null
           storytelling_score: number | null
           transcript: string | null
+          user_id: string | null
           video_duration_seconds: number | null
           video_path: string | null
           video_url: string | null
@@ -47,6 +48,7 @@ export type Database = {
           storytelling_analysis?: Json | null
           storytelling_score?: number | null
           transcript?: string | null
+          user_id?: string | null
           video_duration_seconds?: number | null
           video_path?: string | null
           video_url?: string | null
@@ -65,6 +67,7 @@ export type Database = {
           storytelling_analysis?: Json | null
           storytelling_score?: number | null
           transcript?: string | null
+          user_id?: string | null
           video_duration_seconds?: number | null
           video_path?: string | null
           video_url?: string | null
