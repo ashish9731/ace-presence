@@ -254,50 +254,331 @@ export function BoardroomSimulator() {
 
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
 
-    // Header
-    doc.setFillColor(147, 51, 234);
-    doc.rect(0, 0, pageWidth, 40, 'F');
+    // Colors (typed as tuples for jsPDF)
+    const primaryColor: [number, number, number] = [147, 51, 234];
+    const successColor: [number, number, number] = [40, 167, 69];
+    const accentColor: [number, number, number] = [59, 130, 246];
+    const warningColor: [number, number, number] = [245, 158, 11];
+
+    // ===== PAGE 1: Cover & Executive Summary =====
     
-    doc.setFontSize(24);
+    // Header gradient
+    doc.setFillColor(147, 51, 234);
+    doc.rect(0, 0, pageWidth, 50, 'F');
+    
+    doc.setFontSize(28);
     doc.setTextColor(255, 255, 255);
-    doc.text("Boardroom Simulator", pageWidth / 2, 20, { align: "center" });
-    doc.setFontSize(12);
-    doc.text("Performance Report", pageWidth / 2, 32, { align: "center" });
+    doc.text("Boardroom Simulator", pageWidth / 2, 25, { align: "center" });
+    doc.setFontSize(14);
+    doc.text("Executive Performance Report", pageWidth / 2, 38, { align: "center" });
+    
+    doc.setFontSize(10);
+    doc.setTextColor(200, 200, 200);
+    doc.text(`Generated: ${new Date().toLocaleDateString()}`, pageWidth / 2, 48, { align: "center" });
 
-    let yPos = 55;
-
-    // Overall stats
+    // Overall Performance Score
     const avgScore = completedScenarios.reduce((sum, r) => sum + r.score, 0) / completedScenarios.length;
     
-    doc.setFontSize(14);
-    doc.setTextColor(60, 60, 60);
-    doc.text(`Scenarios Completed: ${completedScenarios.length}`, 20, yPos);
-    doc.text(`Average Score: ${Math.round(avgScore)}/100`, pageWidth - 20, yPos, { align: "right" });
+    let yPos = 70;
+    doc.setFontSize(12);
+    doc.setTextColor(100, 100, 100);
+    doc.text("OVERALL PERFORMANCE", pageWidth / 2, yPos, { align: "center" });
     
-    yPos += 20;
+    // Large score
+    doc.setFontSize(50);
+    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.text(`${Math.round(avgScore)}`, pageWidth / 2, yPos + 30, { align: "center" });
+    doc.setFontSize(16);
+    doc.setTextColor(150, 150, 150);
+    doc.text("/100", pageWidth / 2 + 30, yPos + 30);
 
-    // Scenario results table
+    // Performance level
+    const level = avgScore >= 80 ? "Executive Ready" : avgScore >= 60 ? "Developing Leader" : "Emerging";
+    doc.setFontSize(12);
+    doc.setTextColor(avgScore >= 70 ? successColor[0] : warningColor[0], avgScore >= 70 ? successColor[1] : warningColor[1], avgScore >= 70 ? successColor[2] : warningColor[2]);
+    doc.text(level, pageWidth / 2, yPos + 42, { align: "center" });
+
+    yPos += 60;
+
+    // Summary Stats Boxes
+    const boxWidth = 50;
+    const boxHeight = 25;
+    const startX = (pageWidth - (boxWidth * 3 + 20)) / 2;
+
+    // Scenarios completed
+    doc.setFillColor(240, 240, 255);
+    doc.roundedRect(startX, yPos, boxWidth, boxHeight, 2, 2, 'F');
+    doc.setFontSize(18);
+    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.text(`${completedScenarios.length}`, startX + boxWidth / 2, yPos + 12, { align: 'center' });
+    doc.setFontSize(7);
+    doc.setTextColor(100, 100, 100);
+    doc.text('Scenarios', startX + boxWidth / 2, yPos + 20, { align: 'center' });
+
+    // Highest score
+    const highestScore = Math.max(...completedScenarios.map(r => r.score));
+    doc.setFillColor(220, 252, 231);
+    doc.roundedRect(startX + boxWidth + 10, yPos, boxWidth, boxHeight, 2, 2, 'F');
+    doc.setFontSize(18);
+    doc.setTextColor(successColor[0], successColor[1], successColor[2]);
+    doc.text(`${Math.round(highestScore)}`, startX + boxWidth + 10 + boxWidth / 2, yPos + 12, { align: 'center' });
+    doc.setFontSize(7);
+    doc.setTextColor(100, 100, 100);
+    doc.text('Highest', startX + boxWidth + 10 + boxWidth / 2, yPos + 20, { align: 'center' });
+
+    // Total time
+    const totalTime = completedScenarios.reduce((sum, r) => sum + r.duration, 0);
+    doc.setFillColor(254, 243, 199);
+    doc.roundedRect(startX + (boxWidth + 10) * 2, yPos, boxWidth, boxHeight, 2, 2, 'F');
+    doc.setFontSize(18);
+    doc.setTextColor(warningColor[0], warningColor[1], warningColor[2]);
+    doc.text(`${Math.floor(totalTime / 60)}m`, startX + (boxWidth + 10) * 2 + boxWidth / 2, yPos + 12, { align: 'center' });
+    doc.setFontSize(7);
+    doc.setTextColor(100, 100, 100);
+    doc.text('Total Time', startX + (boxWidth + 10) * 2 + boxWidth / 2, yPos + 20, { align: 'center' });
+
+    yPos += 40;
+
+    // Scenarios Summary Table
+    doc.setFontSize(11);
+    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.text("SCENARIOS OVERVIEW", 20, yPos);
+
     const tableData = completedScenarios.map(r => {
       const scenario = BOARDROOM_SCENARIOS.find(s => s.id === r.scenarioId);
       return [
         scenario?.title || 'Unknown',
         scenario?.category || '-',
+        scenario?.difficulty || '-',
         `${Math.round(r.score)}/100`,
-        r.strengths[0] || '-'
+        `${Math.floor(r.duration / 60)}:${(r.duration % 60).toString().padStart(2, '0')}`
       ];
     });
 
     autoTable(doc, {
-      startY: yPos,
-      head: [['Scenario', 'Category', 'Score', 'Key Strength']],
+      startY: yPos + 5,
+      head: [['Scenario', 'Category', 'Difficulty', 'Score', 'Duration']],
       body: tableData,
-      styles: { fontSize: 9 },
-      headStyles: { fillColor: [147, 51, 234] },
+      styles: { fontSize: 8, cellPadding: 3 },
+      headStyles: { fillColor: primaryColor },
+      alternateRowStyles: { fillColor: [250, 245, 255] },
+      columnStyles: {
+        0: { cellWidth: 50 },
+        1: { cellWidth: 35 },
+        2: { cellWidth: 25 },
+        3: { cellWidth: 25 },
+        4: { cellWidth: 25 },
+      },
     });
 
+    // ===== DETAILED SCENARIO PAGES =====
+    completedScenarios.forEach((result, index) => {
+      doc.addPage();
+      const scenario = BOARDROOM_SCENARIOS.find(s => s.id === result.scenarioId);
+      
+      // Scenario Header
+      const diffColor: [number, number, number] = scenario?.difficulty === "Expert" ? [220, 53, 69] : 
+                        scenario?.difficulty === "Hard" ? [245, 158, 11] : [59, 130, 246];
+      
+      doc.setFillColor(diffColor[0], diffColor[1], diffColor[2]);
+      doc.rect(0, 0, pageWidth, 35, 'F');
+      
+      doc.setFontSize(16);
+      doc.setTextColor(255, 255, 255);
+      doc.text(scenario?.title || "Scenario", 20, 15);
+      doc.setFontSize(10);
+      doc.text(`${scenario?.category} | ${scenario?.difficulty} | Score: ${Math.round(result.score)}/100`, 20, 27);
+      
+      yPos = 50;
+
+      // The Challenge
+      doc.setFillColor(245, 247, 250);
+      doc.roundedRect(15, yPos - 5, pageWidth - 30, 30, 3, 3, 'F');
+      doc.setFontSize(9);
+      doc.setTextColor(100, 100, 100);
+      doc.text("THE CHALLENGE:", 20, yPos + 3);
+      doc.setFontSize(8);
+      doc.setTextColor(60, 60, 60);
+      const challengeLines = doc.splitTextToSize(scenario?.question || "", pageWidth - 45);
+      doc.text(challengeLines.slice(0, 3), 20, yPos + 12);
+
+      yPos += 40;
+
+      // Analysis Breakdown Table
+      doc.setFontSize(11);
+      doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.text("ANALYSIS BREAKDOWN", 20, yPos);
+
+      const analysisData = Object.entries(result.analysis).map(([key, data]) => [
+        key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        `${Math.round(data.score)}/100`,
+        data.feedback.substring(0, 80) + (data.feedback.length > 80 ? '...' : '')
+      ]);
+
+      autoTable(doc, {
+        startY: yPos + 5,
+        head: [['Dimension', 'Score', 'Feedback']],
+        body: analysisData,
+        styles: { fontSize: 8, cellPadding: 3 },
+        headStyles: { fillColor: diffColor },
+        alternateRowStyles: { fillColor: [250, 250, 255] },
+        columnStyles: {
+          0: { cellWidth: 45 },
+          1: { cellWidth: 20 },
+          2: { cellWidth: 'auto' },
+        },
+      });
+
+      yPos = (doc as any).lastAutoTable?.finalY + 15 || yPos + 60;
+
+      // Strengths & Improvements
+      if (yPos < pageHeight - 80) {
+        // Strengths
+        doc.setFillColor(220, 252, 231);
+        doc.roundedRect(15, yPos, (pageWidth - 35) / 2, 50, 3, 3, 'F');
+        doc.setFontSize(10);
+        doc.setTextColor(successColor[0], successColor[1], successColor[2]);
+        doc.text("STRENGTHS", 20, yPos + 10);
+        doc.setFontSize(8);
+        doc.setTextColor(60, 60, 60);
+        result.strengths.slice(0, 3).forEach((s, i) => {
+          const lines = doc.splitTextToSize(`✓ ${s}`, (pageWidth - 50) / 2);
+          doc.text(lines[0], 20, yPos + 20 + (i * 10));
+        });
+
+        // Improvements
+        const rightX = 15 + (pageWidth - 35) / 2 + 5;
+        doc.setFillColor(254, 243, 199);
+        doc.roundedRect(rightX, yPos, (pageWidth - 35) / 2, 50, 3, 3, 'F');
+        doc.setFontSize(10);
+        doc.setTextColor(warningColor[0], warningColor[1], warningColor[2]);
+        doc.text("AREAS TO IMPROVE", rightX + 5, yPos + 10);
+        doc.setFontSize(8);
+        doc.setTextColor(60, 60, 60);
+        result.improvements.slice(0, 3).forEach((s, i) => {
+          const lines = doc.splitTextToSize(`→ ${s}`, (pageWidth - 50) / 2);
+          doc.text(lines[0], rightX + 5, yPos + 20 + (i * 10));
+        });
+
+        yPos += 60;
+      }
+
+      // Response Transcript
+      if (result.transcript && yPos < pageHeight - 50) {
+        doc.setFontSize(10);
+        doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        doc.text("YOUR RESPONSE (Transcript)", 20, yPos);
+        
+        doc.setFillColor(250, 250, 250);
+        doc.roundedRect(15, yPos + 5, pageWidth - 30, 40, 3, 3, 'F');
+        doc.setFontSize(8);
+        doc.setTextColor(80, 80, 80);
+        const transcriptLines = doc.splitTextToSize(result.transcript, pageWidth - 40);
+        doc.text(transcriptLines.slice(0, 6), 20, yPos + 15);
+      }
+
+      // Footer
+      doc.setFontSize(8);
+      doc.setTextColor(150, 150, 150);
+      doc.text(`Scenario ${index + 1} of ${completedScenarios.length}`, pageWidth / 2, pageHeight - 10, { align: "center" });
+    });
+
+    // ===== FINAL PAGE: Summary & Recommendations =====
+    doc.addPage();
+    
+    doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.rect(0, 0, pageWidth, 35, 'F');
+    doc.setFontSize(18);
+    doc.setTextColor(255, 255, 255);
+    doc.text("SUMMARY & RECOMMENDATIONS", 20, 22);
+
+    yPos = 50;
+
+    // Performance by Dimension
+    doc.setFontSize(11);
+    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.text("AVERAGE SCORES BY DIMENSION", 20, yPos);
+
+    const dimensions = ['commanding_presence', 'strategic_thinking', 'composure', 'decisiveness', 'stakeholder_management'];
+    const dimensionScores = dimensions.map(dim => {
+      const scores = completedScenarios.map(r => r.analysis[dim as keyof typeof r.analysis]?.score || 0);
+      return {
+        name: dim.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        avgScore: scores.reduce((a, b) => a + b, 0) / scores.length
+      };
+    });
+
+    yPos += 10;
+    dimensionScores.forEach((dim, i) => {
+      const barWidth = 100;
+      const barX = 20;
+      const barY = yPos + (i * 18);
+      
+      // Label
+      doc.setFontSize(8);
+      doc.setTextColor(80, 80, 80);
+      doc.text(dim.name, barX, barY);
+      
+      // Background bar
+      doc.setFillColor(240, 240, 240);
+      doc.roundedRect(barX, barY + 2, barWidth, 8, 2, 2, 'F');
+      
+      // Score bar
+      const scoreWidth = (dim.avgScore / 100) * barWidth;
+      const barColor = dim.avgScore >= 70 ? successColor : dim.avgScore >= 50 ? warningColor : [220, 53, 69];
+      doc.setFillColor(barColor[0], barColor[1], barColor[2]);
+      doc.roundedRect(barX, barY + 2, scoreWidth, 8, 2, 2, 'F');
+      
+      // Score text
+      doc.setFontSize(9);
+      doc.text(`${Math.round(dim.avgScore)}`, barX + barWidth + 5, barY + 8);
+    });
+
+    yPos += dimensions.length * 18 + 20;
+
+    // Top Strengths
+    const allStrengths = completedScenarios.flatMap(r => r.strengths);
+    if (allStrengths.length > 0) {
+      doc.setFillColor(220, 252, 231);
+      doc.roundedRect(15, yPos, pageWidth - 30, 35, 3, 3, 'F');
+      doc.setFontSize(10);
+      doc.setTextColor(successColor[0], successColor[1], successColor[2]);
+      doc.text("★ YOUR TOP STRENGTHS", 20, yPos + 10);
+      doc.setFontSize(8);
+      doc.setTextColor(60, 60, 60);
+      [...new Set(allStrengths)].slice(0, 3).forEach((s, i) => {
+        doc.text(`• ${s}`, 25, yPos + 20 + (i * 5));
+      });
+      yPos += 45;
+    }
+
+    // Key Areas for Development
+    const allImprovements = completedScenarios.flatMap(r => r.improvements);
+    if (allImprovements.length > 0) {
+      doc.setFillColor(254, 243, 199);
+      doc.roundedRect(15, yPos, pageWidth - 30, 35, 3, 3, 'F');
+      doc.setFontSize(10);
+      doc.setTextColor(warningColor[0], warningColor[1], warningColor[2]);
+      doc.text("⚡ PRIORITY DEVELOPMENT AREAS", 20, yPos + 10);
+      doc.setFontSize(8);
+      doc.setTextColor(60, 60, 60);
+      [...new Set(allImprovements)].slice(0, 3).forEach((s, i) => {
+        doc.text(`• ${s}`, 25, yPos + 20 + (i * 5));
+      });
+    }
+
+    // Disclaimer
+    doc.setFillColor(245, 245, 245);
+    doc.roundedRect(15, pageHeight - 30, pageWidth - 30, 18, 3, 3, 'F');
+    doc.setFontSize(7);
+    doc.setTextColor(120, 120, 120);
+    doc.text("⚠️ DISCLAIMER: This assessment provides AI-powered analysis of your verbal responses to simulated scenarios.", 20, pageHeight - 22);
+    doc.text("Use this feedback as one input in your executive presence development journey.", 20, pageHeight - 17);
+
     doc.save(`Boardroom-Report-${new Date().toISOString().split('T')[0]}.pdf`);
-    toast.success("PDF report downloaded!");
+    toast.success("Comprehensive PDF report downloaded!");
   };
 
   // Scenario Selection View

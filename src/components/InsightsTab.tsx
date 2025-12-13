@@ -163,19 +163,19 @@ export function InsightsTab() {
   const [dailyTip, setDailyTip] = useState<Tip | null>(null);
   const [selectedVideo, setSelectedVideo] = useState<typeof VIDEO_RESOURCES[0] | null>(null);
 
-  // Get current week number of the year
-  const getWeekNumber = () => {
+  // Get 3-day period number of the year (videos rotate every 3 days)
+  const getThreeDayPeriod = () => {
     const now = new Date();
     const start = new Date(now.getFullYear(), 0, 1);
     const diff = now.getTime() - start.getTime();
-    const oneWeek = 1000 * 60 * 60 * 24 * 7;
-    return Math.floor(diff / oneWeek);
+    const threeDays = 1000 * 60 * 60 * 24 * 3;
+    return Math.floor(diff / threeDays);
   };
 
-  // Get weekly videos (rotates every week)
-  const getWeeklyVideos = () => {
-    const weekNum = getWeekNumber();
-    const startIndex = (weekNum * 4) % VIDEO_RESOURCES.length;
+  // Get videos that rotate every 3 days
+  const getRotatingVideos = () => {
+    const periodNum = getThreeDayPeriod();
+    const startIndex = (periodNum * 4) % VIDEO_RESOURCES.length;
     const videos = [];
     for (let i = 0; i < 4; i++) {
       videos.push(VIDEO_RESOURCES[(startIndex + i) % VIDEO_RESOURCES.length]);
@@ -183,7 +183,7 @@ export function InsightsTab() {
     return videos;
   };
 
-  const weeklyVideos = getWeeklyVideos();
+  const rotatingVideos = getRotatingVideos();
 
   useEffect(() => {
     // Get a "daily" tip based on the date
@@ -295,7 +295,7 @@ export function InsightsTab() {
             <Play className="w-5 h-5 text-primary" />
             This Week's Recommended Viewing
           </h3>
-          <span className="text-xs text-muted-foreground">Updates weekly</span>
+          <span className="text-xs text-muted-foreground">Updates every 3 days</span>
         </div>
 
         {/* Embedded Video Player */}
@@ -325,7 +325,7 @@ export function InsightsTab() {
         )}
         
         <div className="grid sm:grid-cols-2 gap-4">
-          {weeklyVideos.map((video) => (
+          {rotatingVideos.map((video) => (
             <button
               key={video.id}
               onClick={() => setSelectedVideo(video)}
@@ -366,8 +366,8 @@ export function InsightsTab() {
           <div className="text-xs text-muted-foreground">Videos</div>
         </div>
         <div className="text-center p-4 bg-warning/5 rounded-xl">
-          <div className="text-2xl font-bold text-warning">Weekly</div>
-          <div className="text-xs text-muted-foreground">Rotation</div>
+          <div className="text-2xl font-bold text-warning">3-Day</div>
+          <div className="text-xs text-muted-foreground">Video Rotation</div>
         </div>
       </div>
     </div>
