@@ -12,9 +12,38 @@ serve(async (req) => {
   }
 
   try {
-    const { assessmentId, videoPath } = await req.json();
+    const body = await req.json();
+    const { assessmentId, videoPath } = body;
+
+    // Input validation
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    if (!assessmentId || typeof assessmentId !== 'string' || !uuidRegex.test(assessmentId)) {
+      console.error('Invalid assessmentId:', assessmentId);
+      return new Response(JSON.stringify({ error: 'Invalid assessmentId: must be a valid UUID' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (!videoPath || typeof videoPath !== 'string') {
+      console.error('Invalid videoPath:', videoPath);
+      return new Response(JSON.stringify({ error: 'Invalid videoPath: must be a non-empty string' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Prevent path traversal attacks
+    if (videoPath.includes('..') || videoPath.startsWith('/')) {
+      console.error('Path traversal attempt detected:', videoPath);
+      return new Response(JSON.stringify({ error: 'Invalid videoPath: path traversal not allowed' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const openaiKey = Deno.env.get('OPENAI_API_KEY')!;
     

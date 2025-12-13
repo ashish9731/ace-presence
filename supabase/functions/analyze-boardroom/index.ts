@@ -12,9 +12,54 @@ serve(async (req) => {
   }
 
   try {
-    const { audioPath, scenario, duration } = await req.json();
+    const body = await req.json();
+    const { audioPath, scenario, duration } = body;
+
+    // Input validation
+    if (!audioPath || typeof audioPath !== 'string') {
+      console.error('Invalid audioPath:', audioPath);
+      return new Response(JSON.stringify({ error: 'Invalid audioPath: must be a non-empty string' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Prevent path traversal attacks
+    if (audioPath.includes('..') || audioPath.startsWith('/')) {
+      console.error('Path traversal attempt detected:', audioPath);
+      return new Response(JSON.stringify({ error: 'Invalid audioPath: path traversal not allowed' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Validate scenario object
+    if (!scenario || typeof scenario !== 'object') {
+      console.error('Invalid scenario:', scenario);
+      return new Response(JSON.stringify({ error: 'Invalid scenario: must be an object' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (!scenario.id || typeof scenario.id !== 'string') {
+      console.error('Invalid scenario.id:', scenario.id);
+      return new Response(JSON.stringify({ error: 'Invalid scenario.id: must be a non-empty string' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Validate duration
+    if (typeof duration !== 'number' || duration <= 0 || duration > 600) {
+      console.error('Invalid duration:', duration);
+      return new Response(JSON.stringify({ error: 'Invalid duration: must be a positive number (max 600 seconds)' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
     
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const openaiKey = Deno.env.get('OPENAI_API_KEY')!;
     
