@@ -83,12 +83,18 @@ export default function Index() {
       return;
     }
 
+    console.log('Processing video:', file.name, 'size:', file.size, 'type:', file.type);
+    
     setIsUploading(true);
     setAnalysisStatus("uploading");
+    
+    toast.info("Uploading video...", {
+      description: "Please wait while we upload your recording.",
+    });
 
     try {
       // Generate unique file path with user folder for RLS
-      const fileExt = file.name.split(".").pop();
+      const fileExt = file.name.split(".").pop() || 'webm';
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
       const filePath = `${user.id}/${fileName}`;
 
@@ -103,6 +109,12 @@ export default function Index() {
       if (uploadError) {
         throw new Error(`Upload failed: ${uploadError.message}`);
       }
+      
+      console.log('Video uploaded successfully to:', filePath);
+      
+      toast.success("Video uploaded!", {
+        description: "Starting AI analysis...",
+      });
 
       setAnalysisStatus("processing");
       setView("analyzing");
@@ -122,6 +134,7 @@ export default function Index() {
         throw new Error(`Failed to create assessment: ${assessmentError.message}`);
       }
 
+      console.log('Assessment created:', assessmentData.id);
       setAssessmentId(assessmentData.id);
 
       // Trigger analysis edge function
@@ -134,7 +147,11 @@ export default function Index() {
 
       if (response.error) {
         console.error("Edge function error:", response.error);
-        // The edge function will update the status, we'll catch it in polling
+        toast.warning("Analysis started", {
+          description: "Processing your video in the background...",
+        });
+      } else {
+        console.log('Edge function triggered successfully');
       }
 
     } catch (error) {
@@ -153,6 +170,15 @@ export default function Index() {
   };
 
   const handleVideoRecorded = async (file: File) => {
+    console.log('Video recorded:', file.name, 'size:', file.size, 'type:', file.type);
+    
+    // Warn if file is very small (likely too short)
+    if (file.size < 100000) { // Less than 100KB
+      toast.warning("Recording seems short", {
+        description: "For best results, record at least 30 seconds of speech.",
+      });
+    }
+    
     await processVideo(file);
   };
 

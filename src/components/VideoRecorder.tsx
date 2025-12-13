@@ -145,12 +145,15 @@ export function VideoRecorder({ onVideoRecorded, onCancel }: VideoRecorderProps)
 
   const handleUseRecording = useCallback(() => {
     if (recordedBlob) {
+      console.log('Submitting recording:', recordedBlob.size, 'bytes, duration:', duration, 'seconds');
       const file = new File([recordedBlob], `recording-${Date.now()}.webm`, {
         type: 'video/webm'
       });
       onVideoRecorded(file);
+    } else {
+      console.error('No recorded blob available');
     }
-  }, [recordedBlob, onVideoRecorded]);
+  }, [recordedBlob, duration, onVideoRecorded]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
