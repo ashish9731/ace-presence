@@ -1098,6 +1098,154 @@ function generatePDF(assessment: Assessment) {
     doc.text(`Benchmark: ${sentenceMetrics.benchmark}`, 20, yPos);
   }
   
+  // ===== PAGE 4b: Speaking Rate & Confidence Analysis =====
+  doc.addPage();
+  
+  doc.setFillColor(59, 130, 246);
+  doc.rect(0, 0, pageWidth, 30, 'F');
+  doc.setFontSize(18);
+  doc.setTextColor(255, 255, 255);
+  doc.text("SPEAKING RATE & CONFIDENCE", 20, 20);
+  
+  yPos = 45;
+  
+  // Speaking Rate Analysis
+  const speakingRateMetrics = commParams.speaking_rate?.metrics as SpeakingRateMetrics | undefined;
+  if (speakingRateMetrics) {
+    doc.setFontSize(12);
+    doc.setTextColor(59, 130, 246);
+    doc.text("Speaking Rate Analysis", 20, yPos);
+    yPos += 12;
+    
+    // Visual speedometer-style representation
+    const rateBoxWidth = 60;
+    const rateBoxHeight = 35;
+    const rateStartX = 20;
+    
+    // WPM Box
+    doc.setFillColor(239, 246, 255);
+    doc.roundedRect(rateStartX, yPos, rateBoxWidth, rateBoxHeight, 3, 3, 'F');
+    doc.setFontSize(20);
+    const wpmColor = speakingRateMetrics.wpm >= 130 && speakingRateMetrics.wpm <= 170 ? [40, 167, 69] : 
+                     speakingRateMetrics.wpm >= 100 && speakingRateMetrics.wpm <= 190 ? [245, 158, 11] : [220, 53, 69];
+    doc.setTextColor(wpmColor[0], wpmColor[1], wpmColor[2]);
+    doc.text(`${Math.round(speakingRateMetrics.wpm)}`, rateStartX + rateBoxWidth / 2, yPos + 18, { align: 'center' });
+    doc.setFontSize(8);
+    doc.setTextColor(100, 100, 100);
+    doc.text('Words/Minute', rateStartX + rateBoxWidth / 2, yPos + 28, { align: 'center' });
+    
+    // Total Words Box
+    doc.setFillColor(240, 253, 244);
+    doc.roundedRect(rateStartX + rateBoxWidth + 10, yPos, rateBoxWidth, rateBoxHeight, 3, 3, 'F');
+    doc.setFontSize(20);
+    doc.setTextColor(40, 167, 69);
+    doc.text(`${speakingRateMetrics.total_words}`, rateStartX + rateBoxWidth + 10 + rateBoxWidth / 2, yPos + 18, { align: 'center' });
+    doc.setFontSize(8);
+    doc.setTextColor(100, 100, 100);
+    doc.text('Total Words', rateStartX + rateBoxWidth + 10 + rateBoxWidth / 2, yPos + 28, { align: 'center' });
+    
+    // Duration Box
+    doc.setFillColor(254, 243, 199);
+    doc.roundedRect(rateStartX + (rateBoxWidth + 10) * 2, yPos, rateBoxWidth, rateBoxHeight, 3, 3, 'F');
+    doc.setFontSize(20);
+    doc.setTextColor(245, 158, 11);
+    const mins = Math.floor(speakingRateMetrics.duration_seconds / 60);
+    const secs = Math.round(speakingRateMetrics.duration_seconds % 60);
+    doc.text(`${mins}:${secs.toString().padStart(2, '0')}`, rateStartX + (rateBoxWidth + 10) * 2 + rateBoxWidth / 2, yPos + 18, { align: 'center' });
+    doc.setFontSize(8);
+    doc.setTextColor(100, 100, 100);
+    doc.text('Duration', rateStartX + (rateBoxWidth + 10) * 2 + rateBoxWidth / 2, yPos + 28, { align: 'center' });
+    
+    yPos += rateBoxHeight + 15;
+    
+    // Calculation and Benchmark
+    doc.setFontSize(9);
+    doc.setTextColor(60, 60, 60);
+    doc.text(`Calculation: ${speakingRateMetrics.calculation}`, 20, yPos);
+    yPos += 6;
+    doc.text(`Optimal Range: ${speakingRateMetrics.optimal_range}`, 20, yPos);
+    yPos += 6;
+    doc.text(`Source: ${speakingRateMetrics.benchmark_source}`, 20, yPos);
+    
+    yPos += 20;
+  }
+  
+  // Confidence Language Analysis
+  const confidenceMetrics = commParams.confidence_language?.metrics as ConfidenceMetrics | undefined;
+  if (confidenceMetrics) {
+    doc.setFontSize(12);
+    doc.setTextColor(147, 51, 234);
+    doc.text("Confidence Language Analysis", 20, yPos);
+    yPos += 12;
+    
+    // Confidence vs Hedging visual
+    const confBoxWidth = 80;
+    const confBoxHeight = 30;
+    
+    // Confidence phrases box
+    doc.setFillColor(220, 252, 231);
+    doc.roundedRect(20, yPos, confBoxWidth, confBoxHeight, 3, 3, 'F');
+    doc.setFontSize(18);
+    doc.setTextColor(40, 167, 69);
+    doc.text(`${confidenceMetrics.confidence_count}`, 60, yPos + 14, { align: 'center' });
+    doc.setFontSize(8);
+    doc.setTextColor(100, 100, 100);
+    doc.text('Confident Phrases', 60, yPos + 24, { align: 'center' });
+    
+    // Hedging phrases box
+    doc.setFillColor(254, 226, 226);
+    doc.roundedRect(110, yPos, confBoxWidth, confBoxHeight, 3, 3, 'F');
+    doc.setFontSize(18);
+    doc.setTextColor(220, 53, 69);
+    doc.text(`${confidenceMetrics.hedge_count}`, 150, yPos + 14, { align: 'center' });
+    doc.setFontSize(8);
+    doc.setTextColor(100, 100, 100);
+    doc.text('Hedging Phrases', 150, yPos + 24, { align: 'center' });
+    
+    yPos += confBoxHeight + 10;
+    
+    // Confidence Ratio
+    const ratio = confidenceMetrics.confidence_ratio;
+    doc.setFontSize(10);
+    doc.setTextColor(ratio >= 1.5 ? 40 : ratio >= 0.8 ? 245 : 220, ratio >= 1.5 ? 167 : ratio >= 0.8 ? 158 : 53, ratio >= 1.5 ? 69 : ratio >= 0.8 ? 11 : 69);
+    doc.text(`Confidence Ratio: ${ratio.toFixed(2)}:1`, 20, yPos);
+    yPos += 8;
+    
+    // Language breakdown table
+    if (confidenceMetrics.language_breakdown?.length > 0) {
+      const langData = confidenceMetrics.language_breakdown.slice(0, 10).map(l => [
+        l.phrase,
+        l.type,
+        `${l.count}`
+      ]);
+      
+      autoTable(doc, {
+        startY: yPos,
+        head: [['Phrase', 'Type', 'Count']],
+        body: langData,
+        styles: { fontSize: 8, cellPadding: 2 },
+        headStyles: { fillColor: [147, 51, 234] },
+        alternateRowStyles: { fillColor: [250, 245, 255] },
+        columnStyles: {
+          0: { cellWidth: 60 },
+          1: { cellWidth: 30 },
+          2: { cellWidth: 20 },
+        },
+        margin: { left: 20 },
+        tableWidth: 120,
+      });
+      
+      yPos = (doc as any).lastAutoTable?.finalY + 10 || yPos + 60;
+    }
+    
+    // Benchmark info
+    doc.setFontSize(9);
+    doc.setTextColor(60, 60, 60);
+    doc.text(`Calculation: ${confidenceMetrics.calculation}`, 20, yPos);
+    yPos += 6;
+    doc.text(`Benchmark: ${confidenceMetrics.benchmark}`, 20, yPos);
+  }
+
   // ===== PAGE 5: Appearance & Storytelling =====
   doc.addPage();
   
@@ -1211,40 +1359,155 @@ function generatePDF(assessment: Assessment) {
     yPos += 40;
   }
   
-  // Key coaching points
+  // Comprehensive Coaching by Dimension
   doc.setFontSize(11);
   doc.setTextColor(34, 45, 90);
-  doc.text("KEY COACHING RECOMMENDATIONS", 20, yPos);
-  yPos += 10;
+  doc.text("COMPLETE COACHING RECOMMENDATIONS BY DIMENSION", 20, yPos);
+  yPos += 12;
   
-  const allParams = { ...commParams, ...appParams, ...storyParams };
-  let coachCount = 0;
+  // Get gravitas params
+  const gravitasParams = gravitasData?.parameters || {};
   
-  Object.entries(allParams).forEach(([key, param]) => {
-    if (coachCount >= 5) return;
-    const paramData = param as ParameterData;
-    if (paramData.score < 75) {
+  // Helper to add coaching section
+  const addCoachingSection = (title: string, params: Record<string, ParameterData>, color: [number, number, number]) => {
+    if (Object.keys(params).length === 0) return;
+    
+    if (yPos > pageHeight - 50) {
+      doc.addPage();
+      yPos = 30;
+    }
+    
+    doc.setFontSize(10);
+    doc.setTextColor(color[0], color[1], color[2]);
+    doc.text(title, 20, yPos);
+    yPos += 8;
+    
+    Object.entries(params).forEach(([key, param]) => {
+      const paramData = param as ParameterData;
+      if (yPos > pageHeight - 20) {
+        doc.addPage();
+        yPos = 30;
+      }
       doc.setFontSize(8);
       doc.setTextColor(80, 80, 80);
-      const coachText = `${parameterLabels[key] || key}: ${paramData.coaching}`;
+      const coachText = `${parameterLabels[key] || key} (${Math.round(paramData.score)}/100): ${paramData.coaching}`;
       const lines = doc.splitTextToSize(`• ${coachText}`, pageWidth - 40);
-      doc.text(lines.slice(0, 2), 20, yPos);
-      yPos += lines.slice(0, 2).length * 4 + 4;
-      coachCount++;
+      doc.text(lines.slice(0, 3), 25, yPos);
+      yPos += lines.slice(0, 3).length * 4 + 3;
+    });
+    
+    yPos += 5;
+  };
+  
+  addCoachingSection("GRAVITAS", gravitasParams as Record<string, ParameterData>, [147, 51, 234]);
+  addCoachingSection("COMMUNICATION", commParams as Record<string, ParameterData>, [34, 45, 90]);
+  addCoachingSection("APPEARANCE & NONVERBAL", appParams as Record<string, ParameterData>, [245, 158, 11]);
+  addCoachingSection("STORYTELLING", storyParams as Record<string, ParameterData>, [40, 167, 69]);
+  
+  // ===== PAGE 7: Transcript =====
+  if (assessment.transcript) {
+    doc.addPage();
+    
+    doc.setFillColor(100, 100, 100);
+    doc.rect(0, 0, pageWidth, 30, 'F');
+    doc.setFontSize(18);
+    doc.setTextColor(255, 255, 255);
+    doc.text("FULL TRANSCRIPT", 20, 20);
+    
+    yPos = 45;
+    
+    doc.setFontSize(9);
+    doc.setTextColor(60, 60, 60);
+    
+    const transcriptLines = doc.splitTextToSize(assessment.transcript, pageWidth - 40);
+    let lineIndex = 0;
+    
+    while (lineIndex < transcriptLines.length) {
+      const linesPerPage = Math.floor((pageHeight - yPos - 20) / 5);
+      const pageLinesCount = Math.min(linesPerPage, transcriptLines.length - lineIndex);
+      
+      doc.text(transcriptLines.slice(lineIndex, lineIndex + pageLinesCount), 20, yPos);
+      lineIndex += pageLinesCount;
+      
+      if (lineIndex < transcriptLines.length) {
+        doc.addPage();
+        yPos = 30;
+      }
     }
+  }
+  
+  // Final page with Disclaimer
+  doc.addPage();
+  
+  doc.setFillColor(34, 45, 90);
+  doc.rect(0, 0, pageWidth, 30, 'F');
+  doc.setFontSize(18);
+  doc.setTextColor(255, 255, 255);
+  doc.text("ABOUT THIS ASSESSMENT", 20, 20);
+  
+  yPos = 50;
+  
+  // Methodology box
+  doc.setFillColor(245, 247, 250);
+  doc.roundedRect(15, yPos - 5, pageWidth - 30, 60, 3, 3, 'F');
+  
+  doc.setFontSize(11);
+  doc.setTextColor(34, 45, 90);
+  doc.text("METHODOLOGY", 20, yPos + 5);
+  
+  doc.setFontSize(9);
+  doc.setTextColor(60, 60, 60);
+  const methodology = [
+    "• Audio transcription using OpenAI Whisper with word-level timestamps",
+    "• Speaking rate calculated as total words divided by speaking duration",
+    "• Filler words and strategic pauses detected with precise timestamps",
+    "• Confidence language analyzed using linguistic pattern matching",
+    "• Executive presence scored across 4 dimensions using GPT-4o analysis",
+    "• Research-backed benchmarks from business communication studies"
+  ];
+  methodology.forEach((line, i) => {
+    doc.text(line, 20, yPos + 15 + (i * 6));
   });
   
+  yPos += 70;
+  
+  // Scoring explanation
+  doc.setFillColor(240, 253, 244);
+  doc.roundedRect(15, yPos, pageWidth - 30, 35, 3, 3, 'F');
+  
+  doc.setFontSize(10);
+  doc.setTextColor(40, 167, 69);
+  doc.text("SCORE INTERPRETATION", 20, yPos + 10);
+  
+  doc.setFontSize(8);
+  doc.setTextColor(60, 60, 60);
+  doc.text("85-100: Exceptional | 70-84: Strong | 55-69: Developing | Below 55: Needs Focus", 20, yPos + 22);
+  doc.text("Weighted: Gravitas 25% | Communication 30% | Appearance 25% | Storytelling 20%", 20, yPos + 30);
+  
+  yPos += 50;
+  
   // Disclaimer
-  doc.setFillColor(245, 245, 245);
-  doc.roundedRect(15, pageHeight - 35, pageWidth - 30, 20, 3, 3, 'F');
-  doc.setFontSize(7);
-  doc.setTextColor(120, 120, 120);
-  doc.text("⚠️ DISCLAIMER: This assessment provides a point-in-time analysis based on a single video sample.", 20, pageHeight - 27);
-  doc.text("It is not a personality diagnosis or comprehensive evaluation. Use this feedback as one data point in your leadership development journey.", 20, pageHeight - 22);
+  doc.setFillColor(254, 243, 199);
+  doc.roundedRect(15, yPos, pageWidth - 30, 35, 3, 3, 'F');
+  doc.setFontSize(9);
+  doc.setTextColor(180, 120, 20);
+  doc.text("⚠️ IMPORTANT DISCLAIMER", 20, yPos + 10);
+  doc.setFontSize(8);
+  doc.setTextColor(100, 80, 40);
+  const disclaimer = doc.splitTextToSize(
+    "This assessment provides a point-in-time analysis based on a single video sample. It is not a personality diagnosis, comprehensive evaluation, or definitive measure of leadership capability. Use this feedback as one data point in your ongoing executive presence development journey. Individual performance may vary based on context, audience, and circumstances.",
+    pageWidth - 45
+  );
+  doc.text(disclaimer.slice(0, 4), 20, yPos + 18);
+  
+  // Footer
+  doc.setFontSize(8);
+  doc.setTextColor(150, 150, 150);
+  doc.text(`Executive Presence Assessment | Generated ${new Date().toLocaleDateString()} | Powered by AI Analysis`, pageWidth / 2, pageHeight - 10, { align: "center" });
   
   // Save
   doc.save(`EP-Report-${new Date().toISOString().split('T')[0]}.pdf`);
-  toast.success("PDF report downloaded successfully!");
+  toast.success("Comprehensive PDF report downloaded!");
 }
 
 export function AssessmentReport({ assessment, onNewAssessment }: AssessmentReportProps) {
