@@ -153,20 +153,66 @@ serve(async (req) => {
     console.log('Transcript obtained, duration:', duration, 'seconds');
     console.log('Word count:', words.length);
 
+    // Handle edge case where no speech is detected
+    if (words.length === 0 && (!transcript || transcript.trim() === '')) {
+      console.log('No speech detected in the video');
+      
+      // Update assessment with minimal analysis for no-speech case
+      await supabase
+        .from('assessments')
+        .update({
+          status: 'completed',
+          completed_at: new Date().toISOString(),
+          transcript: 'No speech detected in the video. Please record a video with clear audio where you speak for at least 30 seconds.',
+          video_duration_seconds: duration,
+          overall_score: 0,
+          communication_score: 0,
+          appearance_score: 0,
+          storytelling_score: 0,
+          communication_analysis: {
+            overall_score: 0,
+            note: 'No speech detected - please record a video with clear spoken content for at least 30 seconds',
+            parameters: {},
+            gravitas_score: 0,
+            gravitas_analysis: { overall_score: 0, parameters: {} }
+          },
+          appearance_analysis: { 
+            overall_score: 0, 
+            note: 'Unable to analyze without speech content',
+            parameters: {} 
+          },
+          storytelling_analysis: { 
+            overall_score: 0,
+            summary: 'No speech was detected in your video. For a complete Executive Presence assessment, please record a 2-4 minute video where you speak clearly about your role, initiatives, and a leadership challenge.',
+            top_strengths: [],
+            priority_development: 'Record a new video with clear, audible speech',
+            parameters: {} 
+          }
+        })
+        .eq('id', assessmentId);
+
+      return new Response(JSON.stringify({ 
+        success: true, 
+        message: 'Analysis completed - no speech detected'
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // ============================================
     // REAL-TIME METRICS WITH TIMESTAMPS
     // ============================================
     
     // 1. Speaking Rate (WPM) - Real-time calculation
     const wordCount = words.length;
-    const speakingRate = Math.round((wordCount / duration) * 60);
+    const speakingRate = wordCount > 0 ? Math.round((wordCount / Math.max(duration, 1)) * 60) : 0;
     const speakingRateScore = calculateSpeakingRateScore(speakingRate);
     
     const speakingRateMetrics = {
       wpm: speakingRate,
       total_words: wordCount,
       duration_seconds: duration,
-      calculation: `${wordCount} words ÷ ${(duration / 60).toFixed(2)} minutes = ${speakingRate} WPM`,
+      calculation: `${wordCount} words ÷ ${(Math.max(duration, 1) / 60).toFixed(2)} minutes = ${speakingRate} WPM`,
       optimal_range: "140-160 WPM",
       benchmark_source: "Carmine Gallo, 'Talk Like TED' (2014)"
     };
@@ -215,7 +261,7 @@ serve(async (req) => {
     // Sort by timestamp
     fillerInstances.sort((a, b) => a.start_seconds - b.start_seconds);
     
-    const fillerRate = (fillerInstances.length / wordCount) * 100;
+    const fillerRate = wordCount > 0 ? (fillerInstances.length / wordCount) * 100 : 0;
     const fillerScore = calculateFillerScore(fillerRate);
     
     const fillerMetrics = {
@@ -223,7 +269,7 @@ serve(async (req) => {
       filler_rate_percent: parseFloat(fillerRate.toFixed(2)),
       instances: fillerInstances,
       breakdown: fillerCounts,
-      calculation: `${fillerInstances.length} fillers ÷ ${wordCount} words × 100 = ${fillerRate.toFixed(2)}%`,
+      calculation: wordCount > 0 ? `${fillerInstances.length} fillers ÷ ${wordCount} words × 100 = ${fillerRate.toFixed(2)}%` : 'N/A - no words detected',
       benchmark: "Professional speakers: <2% filler rate",
       benchmark_source: "Toastmasters International Speech Analysis Research"
     };
