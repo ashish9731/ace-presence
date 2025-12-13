@@ -4,6 +4,21 @@
 
 **URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
 
+## Environment Variables
+
+This project requires certain environment variables to be set for proper functionality. 
+
+**Important Security Notice**: Never commit sensitive credentials to version control. The `.env` file is included in `.gitignore` to prevent accidental exposure.
+
+To set up your environment:
+
+1. Copy the `.env.example` file to `.env`:
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Fill in the appropriate values in the `.env` file
+
 ## How can I edit this code?
 
 There are several ways of editing your application.
