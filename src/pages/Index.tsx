@@ -6,8 +6,9 @@ import { AssessmentReport } from "@/components/AssessmentReport";
 import { BoardroomSimulator } from "@/components/BoardroomSimulator";
 import { InsightsTab } from "@/components/InsightsTab";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { Award, Sparkles, Upload, Video, ChevronLeft, Shield, Clock, BarChart3, BookOpen, MessageSquare, Eye, Crown, Lightbulb } from "lucide-react";
+import { Award, Sparkles, Upload, Video, ChevronLeft, Shield, Clock, BarChart3, BookOpen, MessageSquare, Eye, Crown, Lightbulb, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -29,6 +30,7 @@ interface Assessment {
 }
 
 export default function Index() {
+  const { user, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState<MainTab>("assessment");
   const [view, setView] = useState<ViewState>("home");
   const [isUploading, setIsUploading] = useState(false);
@@ -76,14 +78,19 @@ export default function Index() {
   }, [assessmentId, view]);
 
   const processVideo = async (file: File) => {
+    if (!user) {
+      toast.error("Authentication required");
+      return;
+    }
+
     setIsUploading(true);
     setAnalysisStatus("uploading");
 
     try {
-      // Generate unique file path
+      // Generate unique file path with user folder for RLS
       const fileExt = file.name.split(".").pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-      const filePath = `uploads/${fileName}`;
+      const filePath = `${user.id}/${fileName}`;
 
       // Upload video to storage
       const { error: uploadError } = await supabase.storage
@@ -100,12 +107,13 @@ export default function Index() {
       setAnalysisStatus("processing");
       setView("analyzing");
 
-      // Create assessment record
+      // Create assessment record with user_id
       const { data: assessmentData, error: assessmentError } = await supabase
         .from("assessments")
         .insert({
           video_path: filePath,
           status: "processing",
+          user_id: user.id,
         })
         .select()
         .single();
@@ -198,14 +206,25 @@ export default function Index() {
             </div>
           </div>
           
-          {view === "report" && activeTab === "assessment" && (
-            <button
-              onClick={handleNewAssessment}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          <div className="flex items-center gap-4">
+            {view === "report" && activeTab === "assessment" && (
+              <button
+                onClick={handleNewAssessment}
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                New Assessment
+              </button>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={signOut}
+              className="text-muted-foreground hover:text-foreground"
             >
-              New Assessment
-            </button>
-          )}
+              <LogOut className="w-4 h-4 mr-2" />
+              Sign out
+            </Button>
+          </div>
         </div>
 
         {/* Tab Navigation */}
