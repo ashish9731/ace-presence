@@ -9,7 +9,6 @@ import {
   BookOpen, 
   GraduationCap, 
   Users, 
-  HelpCircle,
   RefreshCw,
   Filter,
   LogOut,
@@ -57,12 +56,11 @@ interface Assessment {
 }
 
 const navItems = [
-  { id: "know-ep", label: "Know your EP", subtitle: "Analyze your video", icon: Video },
-  { id: "simulator", label: "Simulator", subtitle: "Practice scenarios", icon: BarChart3 },
-  { id: "learning", label: "Learning Bytes", subtitle: "Daily tips", icon: BookOpen },
-  { id: "training", label: "Training", subtitle: "Skill courses", icon: GraduationCap },
-  { id: "coaching", label: "Executive Coaching", subtitle: "Book sessions", icon: Users },
-  { id: "how-it-works", label: "How It Works", subtitle: "Our methodology", icon: HelpCircle },
+  { id: "know-ep", label: "Know your EP", subtitle: "Analyze your video", icon: Video, path: "/know-your-ep" },
+  { id: "simulator", label: "Simulator", subtitle: "Practice scenarios", icon: BarChart3, path: "/simulator" },
+  { id: "learning", label: "Learning Bytes", subtitle: "Daily tips", icon: BookOpen, path: "/learning-bytes" },
+  { id: "training", label: "Training", subtitle: "Skill courses", icon: GraduationCap, path: "/training" },
+  { id: "coaching", label: "Executive Coaching", subtitle: "Book sessions", icon: Users, path: "/executive-coaching" },
 ];
 
 const COLORS = {
@@ -138,15 +136,13 @@ export default function Dashboard() {
     setLoading(false);
   };
 
-  const handleNavClick = (id: string) => {
+  const handleNavClick = (id: string, path: string) => {
     setActiveNav(id);
-    if (id === "know-ep") {
-      navigate("/assessment");
-    }
+    navigate(path);
   };
 
   const handleNewAssessment = () => {
-    navigate("/assessment");
+    navigate("/know-your-ep");
   };
 
   // Calculate statistics
@@ -287,7 +283,7 @@ export default function Dashboard() {
             {navItems.map((item) => (
               <button
                 key={item.id}
-                onClick={() => handleNavClick(item.id)}
+                onClick={() => handleNavClick(item.id, item.path)}
                 className={cn(
                   "flex items-center gap-3 py-2 text-left transition-all",
                   activeNav === item.id ? "text-[#C4A84D]" : "text-gray-600 hover:text-gray-900"
