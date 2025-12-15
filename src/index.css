@@ -68,6 +68,8 @@
     --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
     --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
     --shadow-glow: 0 0 40px hsl(38 92% 50% / 0.3);
+    --shadow-golden-glow: 0 0 20px hsl(38 92% 50% / 0.5), 0 0 40px hsl(38 92% 50% / 0.3);
+    --border-golden: hsl(38 92% 50%);
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -174,6 +176,15 @@
 
   .shadow-glow {
     box-shadow: var(--shadow-glow);
+  }
+
+  .golden-glow-hover {
+    @apply transition-all duration-300;
+  }
+
+  .golden-glow-hover:hover {
+    box-shadow: 0 0 20px hsl(38 92% 50% / 0.5), 0 0 40px hsl(38 92% 50% / 0.3);
+    border-color: hsl(38 92% 50%);
   }
 }
 
