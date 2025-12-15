@@ -1,8 +1,67 @@
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Check, ArrowLeft } from "lucide-react";
+import { Check, ArrowLeft, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 export default function Pricing() {
+  const navigate = useNavigate();
+  const { user, isLoading: authLoading } = useAuth();
+  const [selectingPlan, setSelectingPlan] = useState<string | null>(null);
+  const [existingPlan, setExistingPlan] = useState<string | null>(null);
+
+  useEffect(() => {
+    checkExistingPlan();
+  }, [user]);
+
+  const checkExistingPlan = async () => {
+    if (!user) return;
+    
+    const { data } = await supabase
+      .from("user_plans")
+      .select("plan_name")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    
+    if (data?.plan_name) {
+      setExistingPlan(data.plan_name);
+      navigate("/dashboard", { replace: true });
+    }
+  };
+
+  const handleSelectPlan = async (planName: string) => {
+    if (!user) {
+      navigate("/auth");
+      return;
+    }
+
+    setSelectingPlan(planName);
+    
+    try {
+      const { error } = await supabase
+        .from("user_plans")
+        .insert({ user_id: user.id, plan_name: planName });
+
+      if (error) throw error;
+      
+      toast.success(`${planName} plan activated!`);
+      navigate("/dashboard");
+    } catch (error: any) {
+      toast.error("Failed to select plan", { description: error.message });
+    } finally {
+      setSelectingPlan(null);
+    }
+  };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-[#D4A84B]" />
+      </div>
+    );
+  }
   const plans = [
     {
       name: "Starter",
@@ -144,17 +203,20 @@ export default function Pricing() {
                   ))}
                 </ul>
 
-                <Link to="/dashboard">
-                  <Button
-                    className="w-full rounded-lg"
-                    style={plan.popular 
-                      ? { backgroundColor: '#D4A84B', color: '#1a1a2e' } 
-                      : { backgroundColor: 'transparent', borderColor: '#D4A84B', color: '#D4A84B', borderWidth: '1px', borderStyle: 'solid' }
-                    }
-                  >
-                    {plan.cta}
-                  </Button>
-                </Link>
+                <Button
+                  className="w-full rounded-lg"
+                  style={plan.popular 
+                    ? { backgroundColor: '#D4A84B', color: '#1a1a2e' } 
+                    : { backgroundColor: 'transparent', borderColor: '#D4A84B', color: '#D4A84B', borderWidth: '1px', borderStyle: 'solid' }
+                  }
+                  onClick={() => handleSelectPlan(plan.name)}
+                  disabled={selectingPlan !== null}
+                >
+                  {selectingPlan === plan.name ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : null}
+                  {plan.cta}
+                </Button>
               </div>
             ))}
           </div>

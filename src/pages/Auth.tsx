@@ -22,15 +22,29 @@ export default function Auth() {
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
 
   useEffect(() => {
+    const checkUserPlan = async (userId: string) => {
+      const { data } = await supabase
+        .from("user_plans")
+        .select("plan_name")
+        .eq("user_id", userId)
+        .maybeSingle();
+      
+      if (data?.plan_name) {
+        navigate("/dashboard", { replace: true });
+      } else {
+        navigate("/pricing", { replace: true });
+      }
+    };
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
-        navigate("/pricing", { replace: true });
+        setTimeout(() => checkUserPlan(session.user.id), 0);
       }
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        navigate("/pricing", { replace: true });
+        checkUserPlan(session.user.id);
       }
     });
 
