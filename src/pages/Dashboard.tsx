@@ -79,9 +79,11 @@ export default function Dashboard() {
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeNav, setActiveNav] = useState("know-ep");
+  const [userPlan, setUserPlan] = useState<string | null>(null);
 
   useEffect(() => {
     fetchAssessments();
+    fetchUserPlan();
     
     // Set up realtime subscription for assessments
     const channel = supabase
@@ -103,6 +105,20 @@ export default function Dashboard() {
       supabase.removeChannel(channel);
     };
   }, [user]);
+
+  const fetchUserPlan = async () => {
+    if (!user) return;
+    
+    const { data } = await supabase
+      .from("user_plans")
+      .select("plan_name")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    
+    if (data?.plan_name) {
+      setUserPlan(data.plan_name);
+    }
+  };
 
   const fetchAssessments = async () => {
     if (!user) return;
@@ -230,10 +246,12 @@ export default function Dashboard() {
           </div>
           
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-[#C4A84D]/10 rounded-full border border-[#C4A84D]">
-              <span className="w-2 h-2 bg-[#C4A84D] rounded-full"></span>
-              <span className="text-sm font-medium text-[#C4A84D]">PRO ∞</span>
-            </div>
+            {userPlan && (
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-[#C4A84D]/10 rounded-full border border-[#C4A84D]">
+                <span className="w-2 h-2 bg-[#C4A84D] rounded-full"></span>
+                <span className="text-sm font-medium text-[#C4A84D]">{userPlan.toUpperCase()}</span>
+              </div>
+            )}
             <span className="text-sm text-gray-600">
               Welcome, <span className="font-medium text-gray-900">{user?.email?.split('@')[0] || 'User'}</span>
             </span>
