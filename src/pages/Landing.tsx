@@ -78,7 +78,7 @@ export default function Landing() {
             <span className="font-display text-xl text-primary">Quotient</span>
           </div>
           <div className="flex items-center gap-4">
-            <Link to="/auth" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+            <Link to="/pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               Pricing
             </Link>
             <Link to="/auth">
@@ -122,7 +122,7 @@ export default function Landing() {
                   <ArrowRight className="w-4 h-4" />
                 </Button>
               </Link>
-              <Link to="/auth">
+              <Link to="/pricing">
                 <Button variant="outline" size="lg" className="px-8">
                   View Pricing
                 </Button>
