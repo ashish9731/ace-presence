@@ -245,21 +245,19 @@ export default function Dashboard() {
             {userPlan && (
               <button
                 onClick={() => navigate("/pricing")}
-                className={`flex items-center gap-2 px-4 py-2 rounded-full border transition-all hover:scale-105 cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-all duration-300 cursor-pointer hover:shadow-[0_0_20px_hsl(38_92%_50%/0.5),0_0_40px_hsl(38_92%_50%/0.3)] hover:border-[#C4A84D] ${
                   userPlan === "pro"
                     ? "bg-gradient-to-r from-[#D4AF37]/20 to-[#B8973B]/20 border-[#D4AF37] text-[#D4AF37]"
                     : userPlan === "basic"
-                    ? "bg-blue-50 border-blue-400 text-blue-600"
-                    : "bg-gray-50 border-gray-400 text-gray-600"
+                    ? "bg-[#C4A84D]/10 border-[#C4A84D] text-[#C4A84D]"
+                    : "bg-[#C4A84D]/10 border-[#C4A84D] text-[#C4A84D]"
                 }`}
               >
-                <span className={`w-2 h-2 rounded-full ${
-                  userPlan === "pro" ? "bg-[#D4AF37]" : userPlan === "basic" ? "bg-blue-500" : "bg-gray-500"
-                }`}></span>
-                <span className="text-sm font-bold uppercase">{userPlan === "free_trial" ? "FREE TRIAL" : userPlan}</span>
-                {userPlan === "pro" && <span className="text-xs">∞</span>}
-                {userPlan === "basic" && <span className="text-xs">{assessments.length}/7</span>}
-                {userPlan === "free_trial" && <span className="text-xs">{assessments.length}/1</span>}
+                <span className="w-1.5 h-1.5 rounded-full bg-[#C4A84D]"></span>
+                <span className="text-xs font-bold uppercase">{userPlan === "free_trial" ? "FREE TRIAL" : userPlan}</span>
+                {userPlan === "pro" && <span className="text-[10px]">∞</span>}
+                {userPlan === "basic" && <span className="text-[10px]">{assessments.length}/7</span>}
+                {userPlan === "free_trial" && <span className="text-[10px]">{assessments.length}/1</span>}
               </button>
             )}
             <span className="text-sm text-gray-600">
@@ -285,12 +283,12 @@ export default function Dashboard() {
                 key={item.id}
                 onClick={() => handleNavClick(item.id, item.path)}
                 className={cn(
-                  "flex items-center gap-3 py-2 text-left transition-all",
-                  activeNav === item.id ? "text-[#C4A84D]" : "text-gray-600 hover:text-gray-900"
+                  "flex items-center gap-3 py-2 px-3 text-left transition-all duration-300 rounded-lg border border-transparent hover:border-[#C4A84D] hover:shadow-[0_0_20px_hsl(38_92%_50%/0.5),0_0_40px_hsl(38_92%_50%/0.3)] cursor-pointer",
+                  activeNav === item.id ? "text-[#C4A84D] border-[#C4A84D]/30" : "text-gray-600 hover:text-gray-900"
                 )}
               >
                 <div className={cn(
-                  "w-10 h-10 rounded-lg flex items-center justify-center",
+                  "w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-300",
                   activeNav === item.id ? "bg-[#C4A84D]/10" : "bg-gray-100"
                 )}>
                   <item.icon className={cn(
