@@ -6,7 +6,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import Landing from "./pages/Landing";
 import Pricing from "./pages/Pricing";
-import Index from "./pages/Index";
+import Dashboard from "./pages/Dashboard";
+import Assessment from "./pages/Assessment";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
@@ -43,7 +44,12 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/dashboard" element={
             <ProtectedRoute>
-              <Index />
+              <Dashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/assessment" element={
+            <ProtectedRoute>
+              <Assessment />
             </ProtectedRoute>
           } />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
