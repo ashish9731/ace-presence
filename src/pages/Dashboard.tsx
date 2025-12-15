@@ -247,10 +247,24 @@ export default function Dashboard() {
           
           <div className="flex items-center gap-4">
             {userPlan && (
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-[#C4A84D]/10 rounded-full border border-[#C4A84D]">
-                <span className="w-2 h-2 bg-[#C4A84D] rounded-full"></span>
-                <span className="text-sm font-medium text-[#C4A84D]">{userPlan.toUpperCase()}</span>
-              </div>
+              <button
+                onClick={() => navigate("/pricing")}
+                className={`flex items-center gap-2 px-4 py-2 rounded-full border transition-all hover:scale-105 cursor-pointer ${
+                  userPlan === "pro"
+                    ? "bg-gradient-to-r from-[#D4AF37]/20 to-[#B8973B]/20 border-[#D4AF37] text-[#D4AF37]"
+                    : userPlan === "basic"
+                    ? "bg-blue-50 border-blue-400 text-blue-600"
+                    : "bg-gray-50 border-gray-400 text-gray-600"
+                }`}
+              >
+                <span className={`w-2 h-2 rounded-full ${
+                  userPlan === "pro" ? "bg-[#D4AF37]" : userPlan === "basic" ? "bg-blue-500" : "bg-gray-500"
+                }`}></span>
+                <span className="text-sm font-bold uppercase">{userPlan === "free_trial" ? "FREE TRIAL" : userPlan}</span>
+                {userPlan === "pro" && <span className="text-xs">∞</span>}
+                {userPlan === "basic" && <span className="text-xs">{assessments.length}/7</span>}
+                {userPlan === "free_trial" && <span className="text-xs">{assessments.length}/1</span>}
+              </button>
             )}
             <span className="text-sm text-gray-600">
               Welcome, <span className="font-medium text-gray-900">{user?.email?.split('@')[0] || 'User'}</span>
