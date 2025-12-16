@@ -18,7 +18,8 @@ import {
   Award,
   Zap,
   FileText,
-  MessageSquare
+  MessageSquare,
+  LayoutDashboard
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -63,6 +64,7 @@ interface Assessment {
 }
 
 const navItems = [
+  { id: "dashboard", label: "Dashboard", subtitle: "Analytics overview", icon: LayoutDashboard, path: "" },
   { id: "know-ep", label: "Know your EP", subtitle: "Analyze your video", icon: Video, path: "/know-your-ep" },
   { id: "simulator", label: "Simulator", subtitle: "Practice scenarios", icon: BarChart3, path: "/simulator" },
   { id: "learning", label: "Learning Bytes", subtitle: "Daily tips", icon: BookOpen, path: "/learning-bytes" },
@@ -86,7 +88,7 @@ export default function Dashboard() {
   const [filteredAssessments, setFilteredAssessments] = useState<Assessment[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [activeNav, setActiveNav] = useState("know-ep");
+  const [activeNav, setActiveNav] = useState("dashboard");
   const [userPlan, setUserPlan] = useState<string | null>(null);
   const [timeFilter, setTimeFilter] = useState<string>("all");
 
@@ -194,7 +196,9 @@ export default function Dashboard() {
 
   const handleNavClick = (id: string, path: string) => {
     setActiveNav(id);
-    navigate(path);
+    if (path) {
+      navigate(path);
+    }
   };
 
   const handleNewAssessment = () => {
@@ -316,8 +320,8 @@ export default function Dashboard() {
       <header className="bg-white border-b border-gray-100 sticky top-0 z-50">
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="font-bold text-xl text-gray-900">EP</span>
-            <span className="font-bold text-xl text-[#C4A84D]">Quotient</span>
+            <span className="font-bold text-3xl text-gray-900">EP</span>
+            <span className="font-bold text-3xl text-[#C4A84D]">Quotient</span>
           </div>
           
           <div className="flex items-center gap-4">
@@ -354,8 +358,8 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Navigation */}
-        <div className="container mx-auto px-6 pb-4">
+        {/* Navigation - 3cm gap from logo */}
+        <div className="container mx-auto px-6 pb-4 mt-8">
           <div className="flex gap-8">
             {navItems.map((item) => (
               <button
