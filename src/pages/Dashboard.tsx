@@ -696,55 +696,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* All Reports */}
-        <div className="bg-white rounded-xl border border-gray-100 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            All <span className="text-[#C4A84D]">Reports</span> ({filteredAssessments.length}{timeFilter !== "all" ? ` of ${assessments.length}` : ""})
-          </h3>
-          <div className="space-y-3">
-            {filteredAssessments.map((assessment, index) => (
-              <div 
-                key={assessment.id}
-                className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors"
-                onClick={() => navigate(`/report/${assessment.id}`)}
-              >
-                <div>
-                  <p className="font-medium text-gray-900">Report #{filteredAssessments.length - index}</p>
-                  <p className="text-sm text-gray-400">{formatDate(assessment.created_at)}</p>
-                </div>
-                <div className="flex items-center gap-8">
-                  <div className="text-center">
-                    <p className="text-xs text-gray-400">Gravitas</p>
-                    <p className="text-lg font-medium text-[#C4A84D]">{getGravitasScore(assessment).toFixed(0) || "-"}</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-xs text-gray-400">Comm.</p>
-                    <p className="text-lg font-medium text-purple-500">{assessment.communication_score?.toFixed(0) || "-"}</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-xs text-gray-400">Presence</p>
-                    <p className="text-lg font-medium text-emerald-500">{assessment.appearance_score?.toFixed(0) || "-"}</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-xs text-gray-400">Story</p>
-                    <p className="text-lg font-medium text-orange-500">{assessment.storytelling_score?.toFixed(0) || "-"}</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-xs text-gray-400">Overall</p>
-                    <p className="text-2xl font-light text-[#C4A84D]">{assessment.overall_score?.toFixed(1) || "-"}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-            {filteredAssessments.length === 0 && (
-              <div className="text-center py-8 text-gray-400">
-                {assessments.length === 0 
-                  ? "No reports yet. Start your first assessment!"
-                  : "No reports match the selected time period."}
-              </div>
-            )}
-          </div>
-        </div>
       </main>
     </div>
   );
