@@ -17,6 +17,7 @@ import {
   TrendingDown,
   Award,
   Zap,
+  FileText,
   MessageSquare
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -67,6 +68,7 @@ const navItems = [
   { id: "learning", label: "Learning Bytes", subtitle: "Daily tips", icon: BookOpen, path: "/learning-bytes" },
   { id: "training", label: "Training", subtitle: "Skill courses", icon: GraduationCap, path: "/training" },
   { id: "coaching", label: "Executive Coaching", subtitle: "Book sessions", icon: Users, path: "/executive-coaching" },
+  { id: "reports", label: "Reports", subtitle: "View all reports", icon: FileText, path: "/reports" },
 ];
 
 const COLORS = {

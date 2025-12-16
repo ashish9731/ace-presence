@@ -16,6 +16,7 @@ import LearningBytes from "./pages/LearningBytes";
 import Training from "./pages/Training";
 import ExecutiveCoaching from "./pages/ExecutiveCoaching";
 import Report from "./pages/Report";
+import Reports from "./pages/Reports";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
@@ -86,6 +87,11 @@ const App = () => (
           <Route path="/executive-coaching" element={
             <ProtectedRoute>
               <ExecutiveCoaching />
+            </ProtectedRoute>
+          } />
+          <Route path="/reports" element={
+            <ProtectedRoute>
+              <Reports />
             </ProtectedRoute>
           } />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
