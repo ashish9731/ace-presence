@@ -15,6 +15,7 @@ import Simulator from "./pages/Simulator";
 import LearningBytes from "./pages/LearningBytes";
 import Training from "./pages/Training";
 import ExecutiveCoaching from "./pages/ExecutiveCoaching";
+import Report from "./pages/Report";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
@@ -60,6 +61,11 @@ const App = () => (
           <Route path="/know-your-ep" element={
             <ProtectedRoute>
               <KnowYourEP />
+            </ProtectedRoute>
+          } />
+          <Route path="/report/:id" element={
+            <ProtectedRoute>
+              <Report />
             </ProtectedRoute>
           } />
           <Route path="/simulator" element={
