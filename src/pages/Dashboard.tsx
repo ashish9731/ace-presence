@@ -443,8 +443,8 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-5 gap-4 mb-8">
+        {/* Stats Cards - 6 KPIs */}
+        <div className="grid grid-cols-6 gap-4 mb-8">
           <div className="bg-white rounded-xl border border-gray-100 p-5">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 rounded-lg bg-[#C4A84D]/10 flex items-center justify-center">
@@ -452,32 +452,20 @@ export default function Dashboard() {
               </div>
               <span className="text-sm text-gray-500">Latest Score</span>
             </div>
-            <p className="text-4xl font-light text-[#C4A84D]">{latestScore?.toFixed(1) || "0.0"}</p>
-            <div className="flex items-center gap-1 mt-2 text-sm">
+            <p className="text-3xl font-light text-[#C4A84D]">{latestScore?.toFixed(1) || "0.0"}</p>
+            <div className="flex items-center gap-1 mt-2 text-xs">
               {parseFloat(scoreChange) < 0 ? (
                 <>
-                  <TrendingDown className="w-4 h-4 text-red-500" />
+                  <TrendingDown className="w-3 h-3 text-red-500" />
                   <span className="text-red-500">{scoreChange}%</span>
                 </>
               ) : (
                 <>
-                  <TrendingUp className="w-4 h-4 text-green-500" />
+                  <TrendingUp className="w-3 h-3 text-green-500" />
                   <span className="text-green-500">+{scoreChange}%</span>
                 </>
               )}
-              <span className="text-gray-400">vs previous</span>
             </div>
-          </div>
-
-          <div className="bg-white rounded-xl border border-gray-100 p-5">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center">
-                <BarChart3 className="w-5 h-5 text-emerald-500" />
-              </div>
-              <span className="text-sm text-gray-500">Average Score</span>
-            </div>
-            <p className="text-4xl font-light text-gray-900">{avgScore}</p>
-            <p className="text-sm text-gray-400 mt-2">Across {assessments.length} reports</p>
           </div>
 
           <div className="bg-white rounded-xl border border-gray-100 p-5">
@@ -487,30 +475,52 @@ export default function Dashboard() {
               </div>
               <span className="text-sm text-gray-500">Best Score</span>
             </div>
-            <p className="text-4xl font-light text-cyan-500">{bestScore}</p>
-            <p className="text-sm text-gray-400 mt-2">Personal best</p>
+            <p className="text-3xl font-light text-cyan-500">{bestScore}</p>
+            <p className="text-xs text-gray-400 mt-2">Personal best</p>
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-100 p-5">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-lg bg-[#C4A84D]/10 flex items-center justify-center">
+                <Zap className="w-5 h-5 text-[#C4A84D]" />
+              </div>
+              <span className="text-sm text-gray-500">Gravitas</span>
+            </div>
+            <p className="text-3xl font-light text-[#C4A84D]">{avgGravitas}</p>
+            <p className="text-xs text-gray-400 mt-2">Avg score</p>
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-100 p-5">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center">
+                <MessageSquare className="w-5 h-5 text-purple-500" />
+              </div>
+              <span className="text-sm text-gray-500">Communication</span>
+            </div>
+            <p className="text-3xl font-light text-purple-500">{avgCommunication}</p>
+            <p className="text-xs text-gray-400 mt-2">Avg score</p>
           </div>
 
           <div className="bg-white rounded-xl border border-gray-100 p-5">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center">
-                <Zap className="w-5 h-5 text-emerald-500" />
+                <BarChart3 className="w-5 h-5 text-emerald-500" />
               </div>
-              <span className="text-sm text-gray-500">Strongest</span>
+              <span className="text-sm text-gray-500">Presence</span>
             </div>
-            <p className="text-2xl font-semibold text-emerald-500">{strongest.name}</p>
-            <p className="text-xl font-light text-gray-900">{strongest.score.toFixed(1)}</p>
+            <p className="text-3xl font-light text-emerald-500">{avgPresence}</p>
+            <p className="text-xs text-gray-400 mt-2">Avg score</p>
           </div>
 
           <div className="bg-white rounded-xl border border-gray-100 p-5">
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center">
-                <MessageSquare className="w-5 h-5 text-emerald-500" />
+              <div className="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center">
+                <TrendingUp className="w-5 h-5 text-orange-500" />
               </div>
-              <span className="text-sm text-gray-500">Focus Area</span>
+              <span className="text-sm text-gray-500">Storytelling</span>
             </div>
-            <p className="text-2xl font-semibold text-purple-500">{weakest.name}</p>
-            <p className="text-xl font-light text-gray-900">{weakest.score.toFixed(1)}</p>
+            <p className="text-3xl font-light text-orange-500">{avgStorytelling}</p>
+            <p className="text-xs text-gray-400 mt-2">Avg score</p>
           </div>
         </div>
 

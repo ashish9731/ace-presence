@@ -1,16 +1,86 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Clock, Target } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { BoardroomSimulator } from "@/components/BoardroomSimulator";
 
+// All scenarios pool - rotates every 2 days
+const allScenarios = [
+  {
+    title: "Budget Shortfall Crisis",
+    description: "A $2M budget shortfall discovered during Q3 board presentation. Press calling in 30 minutes.",
+    difficulty: "Hard",
+  },
+  {
+    title: "Executive Conflict Resolution",
+    description: "Two VPs in heated disagreement about resource allocation. Both threaten resignation.",
+    difficulty: "Hard",
+  },
+  {
+    title: "Hostile Investor Question",
+    description: "Activist investor publicly challenges 3-year stock underperformance at shareholder meeting.",
+    difficulty: "Expert",
+  },
+  {
+    title: "Ethical Dilemma",
+    description: "Largest client using product unethically. Dropping them means 30% revenue loss.",
+    difficulty: "Expert",
+  },
+  {
+    title: "Workforce Restructuring",
+    description: "Announcing 15% workforce reduction. Leadership team present, rumors spreading.",
+    difficulty: "Medium",
+  },
+  {
+    title: "Product Launch Failure",
+    description: "Major product launch failed. Board wants answers. Stock dropped 12% this morning.",
+    difficulty: "Expert",
+  },
+  {
+    title: "Data Breach Response",
+    description: "Customer data compromised. Media found out before you. Crisis comms needed immediately.",
+    difficulty: "Hard",
+  },
+  {
+    title: "Merger Announcement",
+    description: "Surprise acquisition announced. Team worried about job security. Town hall in 1 hour.",
+    difficulty: "Medium",
+  },
+  {
+    title: "Regulatory Investigation",
+    description: "Federal regulators arrived unannounced. Board demanding immediate status update.",
+    difficulty: "Expert",
+  },
+  {
+    title: "Key Client Loss",
+    description: "Your largest client just terminated contract. Sales team demoralized. Q4 targets at risk.",
+    difficulty: "Hard",
+  },
+];
+
 export default function Simulator() {
   const navigate = useNavigate();
   const [showSimulator, setShowSimulator] = useState(false);
 
+  // Calculate which scenarios to show based on date (rotates every 2 days)
+  const currentScenarios = useMemo(() => {
+    const startDate = new Date('2025-01-01').getTime();
+    const now = new Date().getTime();
+    const daysSinceStart = Math.floor((now - startDate) / (1000 * 60 * 60 * 24));
+    const rotationIndex = Math.floor(daysSinceStart / 2); // Changes every 2 days
+    
+    // Get 5 scenarios starting from rotation index
+    const scenarios = [];
+    for (let i = 0; i < 5; i++) {
+      const index = (rotationIndex + i) % allScenarios.length;
+      scenarios.push(allScenarios[index]);
+    }
+    return scenarios;
+  }, []);
+
   const getDifficultyColor = (difficulty: string) => {
-    if (difficulty === "High") return "bg-red-100 text-red-600 border-red-200";
-    if (difficulty === "Medium") return "bg-yellow-100 text-yellow-700 border-yellow-200";
+    if (difficulty === "Expert") return "bg-red-100 text-red-600 border-red-200";
+    if (difficulty === "Hard") return "bg-yellow-100 text-yellow-700 border-yellow-200";
     return "bg-green-100 text-green-600 border-green-200";
   };
 
@@ -57,8 +127,11 @@ export default function Simulator() {
           <h1 className="text-4xl font-bold text-gray-900 text-center mb-2">
             Boardroom <span className="text-[#C4A84D]">Simulator</span>
           </h1>
-          <p className="text-gray-500 text-center mb-8">
+          <p className="text-gray-500 text-center mb-2">
             Practice high-pressure executive scenarios with AI-powered feedback
+          </p>
+          <p className="text-xs text-[#C4A84D] text-center mb-8">
+            Scenarios refresh every 2 days
           </p>
 
           {/* Start Button */}
@@ -73,36 +146,10 @@ export default function Simulator() {
 
           {/* Preview Scenarios */}
           <h2 className="text-xl font-semibold text-gray-900 mb-6 text-center">
-            Sample <span className="text-[#C4A84D]">Scenarios</span>
+            Today's <span className="text-[#C4A84D]">Scenarios</span>
           </h2>
           <div className="grid grid-cols-3 gap-6">
-            {[
-              {
-                title: "Budget Shortfall Crisis",
-                description: "A $2M budget shortfall discovered during Q3 board presentation. Press calling in 30 minutes.",
-                difficulty: "Hard",
-              },
-              {
-                title: "Executive Conflict Resolution",
-                description: "Two VPs in heated disagreement about resource allocation. Both threaten resignation.",
-                difficulty: "Hard",
-              },
-              {
-                title: "Hostile Investor Question",
-                description: "Activist investor publicly challenges 3-year stock underperformance at shareholder meeting.",
-                difficulty: "Expert",
-              },
-              {
-                title: "Ethical Dilemma",
-                description: "Largest client using product unethically. Dropping them means 30% revenue loss.",
-                difficulty: "Expert",
-              },
-              {
-                title: "Workforce Restructuring",
-                description: "Announcing 15% workforce reduction. Leadership team present, rumors spreading.",
-                difficulty: "Medium",
-              },
-            ].map((scenario, index) => (
+            {currentScenarios.map((scenario, index) => (
               <div
                 key={index}
                 onClick={() => setShowSimulator(true)}
