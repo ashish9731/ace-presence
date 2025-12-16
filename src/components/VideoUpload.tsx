@@ -25,13 +25,7 @@ export function VideoUpload({ onVideoSelect, isUploading }: VideoUploadProps) {
       return false;
     }
 
-    // Check file size (max 100MB)
-    const maxSize = 100 * 1024 * 1024;
-    if (file.size > maxSize) {
-      setError("Video file must be smaller than 100MB.");
-      return false;
-    }
-
+    // No file size limit - accept any size
     return true;
   };
 
@@ -158,7 +152,7 @@ export function VideoUpload({ onVideoSelect, isUploading }: VideoUploadProps) {
                 {dragActive ? "Drop your video here" : "Drag and drop your video"}
               </p>
               <p className="text-sm text-muted-foreground mt-1">
-                or click to browse • MP4, MOV, WebM • Max 100MB
+                or click to browse • MP4, MOV, WebM
               </p>
             </div>
           </div>
