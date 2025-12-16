@@ -10,7 +10,7 @@ import {
   GraduationCap, 
   Users, 
   RefreshCw,
-  Filter,
+  ChevronDown,
   LogOut,
   Target,
   TrendingUp,
@@ -20,6 +20,12 @@ import {
   MessageSquare
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import {
   LineChart,
@@ -75,9 +81,12 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const [assessments, setAssessments] = useState<Assessment[]>([]);
+  const [filteredAssessments, setFilteredAssessments] = useState<Assessment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [activeNav, setActiveNav] = useState("know-ep");
   const [userPlan, setUserPlan] = useState<string | null>(null);
+  const [timeFilter, setTimeFilter] = useState<string>("all");
 
   useEffect(() => {
     fetchAssessments();
@@ -118,9 +127,10 @@ export default function Dashboard() {
     }
   };
 
-  const fetchAssessments = async () => {
+  const fetchAssessments = async (showToast = false) => {
     if (!user) return;
     
+    setRefreshing(true);
     const { data, error } = await supabase
       .from("assessments")
       .select("*")
@@ -130,10 +140,54 @@ export default function Dashboard() {
 
     if (error) {
       console.error("Error fetching assessments:", error);
+      if (showToast) toast.error("Failed to refresh data");
     } else {
       setAssessments(data || []);
+      if (showToast) toast.success("Dashboard refreshed!");
     }
     setLoading(false);
+    setRefreshing(false);
+  };
+
+  // Filter assessments based on time filter
+  useEffect(() => {
+    if (assessments.length === 0) {
+      setFilteredAssessments([]);
+      return;
+    }
+
+    const now = new Date();
+    let filtered = assessments;
+
+    switch (timeFilter) {
+      case "7days":
+        filtered = assessments.filter(a => {
+          const date = new Date(a.created_at);
+          return (now.getTime() - date.getTime()) <= 7 * 24 * 60 * 60 * 1000;
+        });
+        break;
+      case "30days":
+        filtered = assessments.filter(a => {
+          const date = new Date(a.created_at);
+          return (now.getTime() - date.getTime()) <= 30 * 24 * 60 * 60 * 1000;
+        });
+        break;
+      case "90days":
+        filtered = assessments.filter(a => {
+          const date = new Date(a.created_at);
+          return (now.getTime() - date.getTime()) <= 90 * 24 * 60 * 60 * 1000;
+        });
+        break;
+      case "all":
+      default:
+        filtered = assessments;
+    }
+
+    setFilteredAssessments(filtered);
+  }, [assessments, timeFilter]);
+
+  const handleRefresh = () => {
+    fetchAssessments(true);
   };
 
   const handleNavClick = (id: string, path: string) => {
@@ -145,43 +199,49 @@ export default function Dashboard() {
     navigate("/know-your-ep");
   };
 
-  // Calculate statistics
-  const latestScore = assessments[0]?.overall_score || 0;
-  const previousScore = assessments[1]?.overall_score || latestScore;
+  // Calculate statistics using filteredAssessments for time-based filtering
+  const data = filteredAssessments;
+  const latestScore = data[0]?.overall_score || 0;
+  const previousScore = data[1]?.overall_score || latestScore;
   const scoreChange = latestScore && previousScore ? ((latestScore - previousScore) / previousScore * 100).toFixed(1) : "0";
-  const avgScore = assessments.length > 0 
-    ? (assessments.reduce((sum, a) => sum + (a.overall_score || 0), 0) / assessments.length).toFixed(1)
+  const avgScore = data.length > 0 
+    ? (data.reduce((sum, a) => sum + (a.overall_score || 0), 0) / data.length).toFixed(1)
     : "0";
-  const bestScore = assessments.length > 0 
-    ? Math.max(...assessments.map(a => a.overall_score || 0)).toFixed(1)
+  const bestScore = data.length > 0 
+    ? Math.max(...data.map(a => a.overall_score || 0)).toFixed(1)
     : "0";
 
-  // Calculate dimension averages
+  // Calculate dimension averages - FIX: use correct path for gravitas data
   const getGravitasScore = (a: Assessment) => {
     const analysis = a.communication_analysis;
-    if (!analysis?.gravitas_assessment) return 0;
-    const gravitas = analysis.gravitas_assessment;
+    // Check for gravitas_score directly (stored by edge function)
+    if (analysis?.gravitas_score) return analysis.gravitas_score;
+    // Also check gravitas_analysis.overall_score
+    if (analysis?.gravitas_analysis?.overall_score) return analysis.gravitas_analysis.overall_score;
+    // Fallback: calculate from individual parameters
+    const gravitas = analysis?.gravitas_analysis?.parameters;
+    if (!gravitas) return 0;
     const scores = [
       gravitas.commanding_presence?.score,
       gravitas.decisiveness?.score,
       gravitas.poise_under_pressure?.score,
       gravitas.emotional_intelligence?.score,
       gravitas.vision_articulation?.score
-    ].filter(s => s !== undefined);
-    return scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+    ].filter(s => s !== undefined && s !== null);
+    return scores.length > 0 ? scores.reduce((sum, b) => sum + b, 0) / scores.length : 0;
   };
 
-  const avgGravitas = assessments.length > 0
-    ? (assessments.reduce((sum, a) => sum + getGravitasScore(a), 0) / assessments.length).toFixed(1)
+  const avgGravitas = data.length > 0
+    ? (data.reduce((sum, a) => sum + getGravitasScore(a), 0) / data.length).toFixed(1)
     : "0";
-  const avgCommunication = assessments.length > 0
-    ? (assessments.reduce((sum, a) => sum + (a.communication_score || 0), 0) / assessments.length).toFixed(1)
+  const avgCommunication = data.length > 0
+    ? (data.reduce((sum, a) => sum + (a.communication_score || 0), 0) / data.length).toFixed(1)
     : "0";
-  const avgPresence = assessments.length > 0
-    ? (assessments.reduce((sum, a) => sum + (a.appearance_score || 0), 0) / assessments.length).toFixed(1)
+  const avgPresence = data.length > 0
+    ? (data.reduce((sum, a) => sum + (a.appearance_score || 0), 0) / data.length).toFixed(1)
     : "0";
-  const avgStorytelling = assessments.length > 0
-    ? (assessments.reduce((sum, a) => sum + (a.storytelling_score || 0), 0) / assessments.length).toFixed(1)
+  const avgStorytelling = data.length > 0
+    ? (data.reduce((sum, a) => sum + (a.storytelling_score || 0), 0) / data.length).toFixed(1)
     : "0";
 
   // Find strongest and weakest
@@ -194,8 +254,8 @@ export default function Dashboard() {
   const strongest = dimensionScores.reduce((a, b) => a.score > b.score ? a : b);
   const weakest = dimensionScores.reduce((a, b) => a.score < b.score ? a : b);
 
-  // Chart data
-  const lineChartData = assessments.slice(0, 10).reverse().map((a, index) => ({
+  // Chart data - use filtered data
+  const lineChartData = data.slice(0, 10).reverse().map((a) => ({
     date: new Date(a.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
     Communication: a.communication_score || 0,
     Gravitas: getGravitasScore(a),
@@ -217,11 +277,28 @@ export default function Dashboard() {
     { name: "Storytelling", value: parseFloat(avgStorytelling), color: COLORS.storytelling },
   ];
 
-  const recentScoresData = assessments.slice(0, 5).reverse().map((a, index) => ({
-    name: `#${assessments.length - index}`,
+  const recentScoresData = data.slice(0, 5).reverse().map((a, index) => ({
+    name: `#${data.length - index}`,
     score: a.overall_score || 0,
     color: index % 2 === 0 ? COLORS.gravitas : "#EF4444",
   }));
+
+  // Custom tooltip for charts
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
+          <p className="font-medium text-gray-900 mb-1">{label}</p>
+          {payload.map((entry: any, index: number) => (
+            <p key={index} className="text-sm" style={{ color: entry.color }}>
+              {entry.name}: {typeof entry.value === 'number' ? entry.value.toFixed(1) : entry.value}
+            </p>
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('en-US', { 
@@ -320,17 +397,41 @@ export default function Dashboard() {
             <p className="text-gray-500 mt-1">Real-time insights into your executive presence journey</p>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="outline" className="text-gray-600 border-gray-200">
-              <span>All Time</span>
-              <Filter className="w-4 h-4 ml-2" />
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="text-gray-600 border-gray-200">
+                  <span>
+                    {timeFilter === "all" && "All Time"}
+                    {timeFilter === "7days" && "Last 7 Days"}
+                    {timeFilter === "30days" && "Last 30 Days"}
+                    {timeFilter === "90days" && "Last 90 Days"}
+                  </span>
+                  <ChevronDown className="w-4 h-4 ml-2" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-white">
+                <DropdownMenuItem onClick={() => setTimeFilter("all")}>
+                  All Time
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setTimeFilter("7days")}>
+                  Last 7 Days
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setTimeFilter("30days")}>
+                  Last 30 Days
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setTimeFilter("90days")}>
+                  Last 90 Days
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button 
               variant="outline" 
               className="text-[#C4A84D] border-[#C4A84D]/30 hover:bg-[#C4A84D]/5"
-              onClick={fetchAssessments}
+              onClick={handleRefresh}
+              disabled={refreshing}
             >
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Refresh
+              <RefreshCw className={cn("w-4 h-4 mr-2", refreshing && "animate-spin")} />
+              {refreshing ? "Refreshing..." : "Refresh"}
             </Button>
             <Button 
               className="bg-[#C4A84D] hover:bg-[#B39940] text-white"
@@ -448,6 +549,7 @@ export default function Dashboard() {
                   <PolarGrid stroke="#E5E7EB" />
                   <PolarAngleAxis dataKey="subject" tick={{ fontSize: 11 }} />
                   <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fontSize: 10 }} />
+                  <Tooltip content={<CustomTooltip />} />
                   <Radar
                     name="Score"
                     dataKey="value"
@@ -468,24 +570,31 @@ export default function Dashboard() {
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
               Score <span className="text-[#C4A84D]">Distribution</span>
             </h3>
-            <div className="h-48">
+            <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={pieData}
                     cx="50%"
-                    cy="50%"
-                    innerRadius={50}
-                    outerRadius={80}
+                    cy="40%"
+                    innerRadius={40}
+                    outerRadius={65}
                     paddingAngle={2}
                     dataKey="value"
-                    label={({ name, value }) => `${name}: ${value}`}
-                    labelLine={false}
                   >
                     {pieData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
+                  <Tooltip 
+                    formatter={(value: number) => value.toFixed(1)}
+                    contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '8px' }}
+                  />
+                  <Legend 
+                    verticalAlign="bottom" 
+                    height={36}
+                    formatter={(value) => <span className="text-xs text-gray-600">{value}</span>}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -496,12 +605,17 @@ export default function Dashboard() {
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
               Recent <span className="text-[#C4A84D]">Scores</span>
             </h3>
-            <div className="h-48">
+            <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={recentScoresData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                   <XAxis dataKey="name" tick={{ fontSize: 12 }} stroke="#9CA3AF" />
                   <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} stroke="#9CA3AF" />
+                  <Tooltip 
+                    formatter={(value: number) => value.toFixed(1)}
+                    contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '8px' }}
+                    labelFormatter={(label) => `Assessment ${label}`}
+                  />
                   <Bar dataKey="score" radius={[4, 4, 0, 0]}>
                     {recentScoresData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
@@ -573,17 +687,17 @@ export default function Dashboard() {
         {/* All Reports */}
         <div className="bg-white rounded-xl border border-gray-100 p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            All <span className="text-[#C4A84D]">Reports</span> ({assessments.length})
+            All <span className="text-[#C4A84D]">Reports</span> ({filteredAssessments.length}{timeFilter !== "all" ? ` of ${assessments.length}` : ""})
           </h3>
           <div className="space-y-3">
-            {assessments.map((assessment, index) => (
+            {filteredAssessments.map((assessment, index) => (
               <div 
                 key={assessment.id}
                 className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors"
                 onClick={() => navigate(`/report/${assessment.id}`)}
               >
                 <div>
-                  <p className="font-medium text-gray-900">Report #{assessments.length - index}</p>
+                  <p className="font-medium text-gray-900">Report #{filteredAssessments.length - index}</p>
                   <p className="text-sm text-gray-400">{formatDate(assessment.created_at)}</p>
                 </div>
                 <div className="flex items-center gap-8">
@@ -610,9 +724,11 @@ export default function Dashboard() {
                 </div>
               </div>
             ))}
-            {assessments.length === 0 && (
+            {filteredAssessments.length === 0 && (
               <div className="text-center py-8 text-gray-400">
-                No reports yet. Start your first assessment!
+                {assessments.length === 0 
+                  ? "No reports yet. Start your first assessment!"
+                  : "No reports match the selected time period."}
               </div>
             )}
           </div>

@@ -121,7 +121,7 @@ export default function Pricing() {
     
     if (data?.plan_name) {
       setExistingPlan(data.plan_name);
-      navigate("/dashboard", { replace: true });
+      // Don't redirect - stay on pricing page if user navigated here intentionally
     }
   };
 
@@ -172,13 +172,23 @@ export default function Pricing() {
             <span className="text-xl font-medium text-[#C4A84D]">Quotient</span>
           </Link>
           <div className="flex items-center gap-4">
-            <Link 
-              to="/" 
-              className="text-sm text-gray-500 hover:text-gray-700 transition-colors flex items-center gap-2"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Home
-            </Link>
+            {user && existingPlan ? (
+              <Link 
+                to="/dashboard" 
+                className="text-sm text-gray-500 hover:text-gray-700 transition-colors flex items-center gap-2"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Back to Dashboard
+              </Link>
+            ) : (
+              <Link 
+                to="/" 
+                className="text-sm text-gray-500 hover:text-gray-700 transition-colors flex items-center gap-2"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Back to Home
+              </Link>
+            )}
             {!user && (
               <Link to="/auth">
                 <Button 
