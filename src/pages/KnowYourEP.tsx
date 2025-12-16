@@ -1,29 +1,275 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Clock, User, Target, Film, Camera, Upload } from "lucide-react";
 import { VideoRecorder } from "@/components/VideoRecorder";
 import { VideoUpload } from "@/components/VideoUpload";
+import { AnalysisProgress } from "@/components/AnalysisProgress";
+import { AssessmentReport } from "@/components/AssessmentReport";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
+
+type ViewState = "select" | "record" | "upload" | "analyzing" | "report";
+
+interface Assessment {
+  id: string;
+  overall_score: number;
+  communication_score: number;
+  appearance_score: number;
+  storytelling_score: number;
+  communication_analysis: any;
+  appearance_analysis: any;
+  storytelling_analysis: any;
+  transcript: string;
+  video_duration_seconds: number;
+  status: string;
+}
 
 export default function KnowYourEP() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"select" | "record" | "upload">("select");
+  const { user } = useAuth();
+  const [mode, setMode] = useState<ViewState>("select");
+  const [isUploading, setIsUploading] = useState(false);
+  const [analysisStatus, setAnalysisStatus] = useState("uploading");
+  const [assessment, setAssessment] = useState<Assessment | null>(null);
+  const [assessmentId, setAssessmentId] = useState<string | null>(null);
 
-  const handleVideoRecorded = (file: File) => {
-    console.log("Video recorded:", file);
-    setMode("select");
+  // Poll for assessment completion
+  useEffect(() => {
+    if (!assessmentId || mode !== "analyzing") return;
+
+    const pollInterval = setInterval(async () => {
+      const { data, error } = await supabase
+        .from("assessments")
+        .select("*")
+        .eq("id", assessmentId)
+        .maybeSingle();
+
+      if (error) {
+        console.error("Error polling assessment:", error);
+        return;
+      }
+
+      if (data) {
+        setAnalysisStatus(data.status);
+
+        if (data.status === "completed") {
+          clearInterval(pollInterval);
+          setAssessment(data as Assessment);
+          setMode("report");
+          toast.success("Analysis complete!", {
+            description: "Your Executive Presence report is ready.",
+          });
+        } else if (data.status === "failed") {
+          clearInterval(pollInterval);
+          toast.error("Analysis failed", {
+            description: data.error_message || "Please try again.",
+          });
+          setMode("select");
+        }
+      }
+    }, 3000);
+
+    return () => clearInterval(pollInterval);
+  }, [assessmentId, mode]);
+
+  const processVideo = async (file: File) => {
+    if (!user) {
+      toast.error("Authentication required");
+      return;
+    }
+
+    console.log('Processing video:', file.name, 'size:', file.size, 'type:', file.type);
+    
+    setIsUploading(true);
+    setAnalysisStatus("uploading");
+    
+    toast.info("Uploading video...", {
+      description: "Please wait while we upload your recording.",
+    });
+
+    try {
+      const fileExt = file.name.split(".").pop() || 'webm';
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `${user.id}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("videos")
+        .upload(filePath, file, {
+          cacheControl: "3600",
+          upsert: false,
+        });
+
+      if (uploadError) {
+        throw new Error(`Upload failed: ${uploadError.message}`);
+      }
+      
+      console.log('Video uploaded successfully to:', filePath);
+      
+      toast.success("Video uploaded!", {
+        description: "Starting AI analysis...",
+      });
+
+      setAnalysisStatus("processing");
+      setMode("analyzing");
+
+      const { data: assessmentData, error: assessmentError } = await supabase
+        .from("assessments")
+        .insert({
+          video_path: filePath,
+          status: "processing",
+          user_id: user.id,
+        })
+        .select()
+        .single();
+
+      if (assessmentError) {
+        throw new Error(`Failed to create assessment: ${assessmentError.message}`);
+      }
+
+      console.log('Assessment created:', assessmentData.id);
+      setAssessmentId(assessmentData.id);
+
+      const response = await supabase.functions.invoke("analyze-video", {
+        body: {
+          assessmentId: assessmentData.id,
+          videoPath: filePath,
+        },
+      });
+
+      if (response.error) {
+        console.error("Edge function error:", response.error);
+        toast.warning("Analysis started", {
+          description: "Processing your video in the background...",
+        });
+      } else {
+        console.log('Edge function triggered successfully');
+      }
+
+    } catch (error) {
+      console.error("Error:", error);
+      toast.error("Upload failed", {
+        description: error instanceof Error ? error.message : "Please try again.",
+      });
+      setMode("select");
+    } finally {
+      setIsUploading(false);
+    }
   };
 
-  const handleVideoSelect = (file: File) => {
-    console.log("Video selected:", file);
+  const handleVideoRecorded = async (file: File) => {
+    console.log('Video recorded:', file.name, 'size:', file.size, 'type:', file.type);
+    
+    if (file.size < 100000) {
+      toast.warning("Recording seems short", {
+        description: "For best results, record at least 30 seconds of speech.",
+      });
+    }
+    
+    await processVideo(file);
+  };
+
+  const handleVideoSelect = async (file: File) => {
+    await processVideo(file);
+  };
+
+  const handleNewAssessment = () => {
+    setAssessment(null);
+    setAssessmentId(null);
     setMode("select");
   };
 
   if (mode === "record") {
-    return <VideoRecorder onVideoRecorded={handleVideoRecorded} onCancel={() => setMode("select")} />;
+    return (
+      <div className="min-h-screen bg-[#FAFAFA]">
+        <div className="border-b border-gray-100 bg-white">
+          <div className="container mx-auto px-6 py-4">
+            <button
+              onClick={() => setMode("select")}
+              className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back
+            </button>
+          </div>
+        </div>
+        <main className="container mx-auto px-6 py-12">
+          <div className="max-w-2xl mx-auto">
+            <VideoRecorder onVideoRecorded={handleVideoRecorded} onCancel={() => setMode("select")} />
+          </div>
+        </main>
+      </div>
+    );
   }
 
   if (mode === "upload") {
-    return <VideoUpload onVideoSelect={handleVideoSelect} isUploading={false} />;
+    return (
+      <div className="min-h-screen bg-[#FAFAFA]">
+        <div className="border-b border-gray-100 bg-white">
+          <div className="container mx-auto px-6 py-4">
+            <button
+              onClick={() => setMode("select")}
+              className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back
+            </button>
+          </div>
+        </div>
+        <main className="container mx-auto px-6 py-12">
+          <div className="max-w-2xl mx-auto">
+            <VideoUpload onVideoSelect={handleVideoSelect} isUploading={isUploading} />
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (mode === "analyzing") {
+    return (
+      <div className="min-h-screen bg-[#FAFAFA]">
+        <div className="border-b border-gray-100 bg-white">
+          <div className="container mx-auto px-6 py-4">
+            <span className="text-sm text-gray-500">Analyzing your video...</span>
+          </div>
+        </div>
+        <main className="container mx-auto px-6 py-12">
+          <div className="max-w-2xl mx-auto">
+            <AnalysisProgress status={analysisStatus} />
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (mode === "report" && assessment) {
+    return (
+      <div className="min-h-screen bg-[#FAFAFA]">
+        <div className="border-b border-gray-100 bg-white">
+          <div className="container mx-auto px-6 py-4 flex items-center justify-between">
+            <button
+              onClick={() => navigate("/dashboard")}
+              className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to Dashboard
+            </button>
+            <button
+              onClick={handleNewAssessment}
+              className="text-sm text-[#C4A84D] hover:text-[#B39940] transition-colors font-medium"
+            >
+              New Assessment
+            </button>
+          </div>
+        </div>
+        <main className="container mx-auto px-6 py-8">
+          <AssessmentReport
+            assessment={assessment}
+            onNewAssessment={handleNewAssessment}
+          />
+        </main>
+      </div>
+    );
   }
 
   return (
