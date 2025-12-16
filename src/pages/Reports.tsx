@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, FileText, Loader2, Calendar, Award, TrendingUp, Eye } from "lucide-react";
+import { ChevronLeft, FileText, Loader2, Calendar, Award, Eye } from "lucide-react";
 
 interface Assessment {
   id: string;
@@ -11,6 +11,7 @@ interface Assessment {
   communication_score: number | null;
   appearance_score: number | null;
   storytelling_score: number | null;
+  communication_analysis: any;
   created_at: string;
   status: string;
 }
@@ -67,6 +68,22 @@ export default function Reports() {
     if (score >= 60) return "text-[#C4A84D]";
     if (score >= 40) return "text-orange-500";
     return "text-red-500";
+  };
+
+  const getGravitasScore = (assessment: Assessment) => {
+    const analysis = assessment.communication_analysis;
+    if (analysis?.gravitas_score) return analysis.gravitas_score;
+    if (analysis?.gravitas_analysis?.overall_score) return analysis.gravitas_analysis.overall_score;
+    const gravitas = analysis?.gravitas_analysis?.parameters;
+    if (!gravitas) return null;
+    const scores = [
+      gravitas.commanding_presence?.score,
+      gravitas.decisiveness?.score,
+      gravitas.poise_under_pressure?.score,
+      gravitas.emotional_intelligence?.score,
+      gravitas.vision_articulation?.score
+    ].filter(s => s !== undefined && s !== null);
+    return scores.length > 0 ? scores.reduce((sum, b) => sum + b, 0) / scores.length : null;
   };
 
   if (loading) {
@@ -131,81 +148,91 @@ export default function Reports() {
             </div>
 
             <div className="grid gap-4">
-              {assessments.map((assessment, index) => (
-                <div
-                  key={assessment.id}
-                  className="bg-white rounded-xl border border-gray-100 p-6 hover:border-[#C4A84D]/30 hover:shadow-[0_0_20px_hsl(38_92%_50%/0.15)] transition-all duration-300 cursor-pointer group"
-                  onClick={() => handleViewReport(assessment.id)}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#C4A84D]/20 to-[#B39940]/10 flex items-center justify-center border border-[#C4A84D]/20">
-                        <span className="text-lg font-bold text-[#C4A84D]">#{assessments.length - index}</span>
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-gray-900 group-hover:text-[#C4A84D] transition-colors">
-                          EP Assessment Report
-                        </h3>
-                        <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
-                          <Calendar className="w-4 h-4" />
-                          <span>{formatDate(assessment.created_at)}</span>
+              {assessments.map((assessment, index) => {
+                const gravitasScore = getGravitasScore(assessment);
+                return (
+                  <div
+                    key={assessment.id}
+                    className="bg-white rounded-xl border border-gray-100 p-6 hover:border-[#C4A84D]/30 hover:shadow-[0_0_20px_hsl(38_92%_50%/0.15)] transition-all duration-300 cursor-pointer group"
+                    onClick={() => handleViewReport(assessment.id)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#C4A84D]/20 to-[#B39940]/10 flex items-center justify-center border border-[#C4A84D]/20">
+                          <span className="text-lg font-bold text-[#C4A84D]">#{assessments.length - index}</span>
                         </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-6">
-                      {/* Score breakdown */}
-                      <div className="hidden md:flex items-center gap-4">
-                        <div className="text-center px-3">
-                          <p className="text-xs text-gray-400 mb-1">Communication</p>
-                          <p className={`text-lg font-semibold ${getScoreColor(assessment.communication_score)}`}>
-                            {assessment.communication_score?.toFixed(0) || '-'}
-                          </p>
-                        </div>
-                        <div className="w-px h-8 bg-gray-200"></div>
-                        <div className="text-center px-3">
-                          <p className="text-xs text-gray-400 mb-1">Presence</p>
-                          <p className={`text-lg font-semibold ${getScoreColor(assessment.appearance_score)}`}>
-                            {assessment.appearance_score?.toFixed(0) || '-'}
-                          </p>
-                        </div>
-                        <div className="w-px h-8 bg-gray-200"></div>
-                        <div className="text-center px-3">
-                          <p className="text-xs text-gray-400 mb-1">Story</p>
-                          <p className={`text-lg font-semibold ${getScoreColor(assessment.storytelling_score)}`}>
-                            {assessment.storytelling_score?.toFixed(0) || '-'}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Overall Score */}
-                      <div className="flex items-center gap-3">
-                        <div className="text-right">
-                          <p className="text-xs text-gray-400 mb-1">Overall</p>
-                          <div className="flex items-center gap-1">
-                            <Award className="w-4 h-4 text-[#C4A84D]" />
-                            <span className={`text-2xl font-bold ${getScoreColor(assessment.overall_score)}`}>
-                              {assessment.overall_score?.toFixed(0) || '-'}
-                            </span>
+                        <div>
+                          <h3 className="font-semibold text-gray-900 group-hover:text-[#C4A84D] transition-colors">
+                            EP Assessment Report
+                          </h3>
+                          <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
+                            <Calendar className="w-4 h-4" />
+                            <span>{formatDate(assessment.created_at)}</span>
                           </div>
                         </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="border-[#C4A84D]/30 text-[#C4A84D] hover:bg-[#C4A84D]/10"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleViewReport(assessment.id);
-                          }}
-                        >
-                          <Eye className="w-4 h-4 mr-1" />
-                          View
-                        </Button>
+                      </div>
+
+                      <div className="flex items-center gap-6">
+                        {/* Score breakdown */}
+                        <div className="hidden md:flex items-center gap-4">
+                          <div className="text-center px-3">
+                            <p className="text-xs text-gray-400 mb-1">Gravitas</p>
+                            <p className={`text-lg font-semibold ${getScoreColor(gravitasScore)}`}>
+                              {gravitasScore?.toFixed(0) || '-'}
+                            </p>
+                          </div>
+                          <div className="w-px h-8 bg-gray-200"></div>
+                          <div className="text-center px-3">
+                            <p className="text-xs text-gray-400 mb-1">Communication</p>
+                            <p className={`text-lg font-semibold ${getScoreColor(assessment.communication_score)}`}>
+                              {assessment.communication_score?.toFixed(0) || '-'}
+                            </p>
+                          </div>
+                          <div className="w-px h-8 bg-gray-200"></div>
+                          <div className="text-center px-3">
+                            <p className="text-xs text-gray-400 mb-1">Presence</p>
+                            <p className={`text-lg font-semibold ${getScoreColor(assessment.appearance_score)}`}>
+                              {assessment.appearance_score?.toFixed(0) || '-'}
+                            </p>
+                          </div>
+                          <div className="w-px h-8 bg-gray-200"></div>
+                          <div className="text-center px-3">
+                            <p className="text-xs text-gray-400 mb-1">Story</p>
+                            <p className={`text-lg font-semibold ${getScoreColor(assessment.storytelling_score)}`}>
+                              {assessment.storytelling_score?.toFixed(0) || '-'}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Overall Score */}
+                        <div className="flex items-center gap-3">
+                          <div className="text-right">
+                            <p className="text-xs text-gray-400 mb-1">Overall</p>
+                            <div className="flex items-center gap-1">
+                              <Award className="w-4 h-4 text-[#C4A84D]" />
+                              <span className={`text-2xl font-bold ${getScoreColor(assessment.overall_score)}`}>
+                                {assessment.overall_score?.toFixed(0) || '-'}
+                              </span>
+                            </div>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-[#C4A84D]/30 text-[#C4A84D] hover:bg-[#C4A84D]/10"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewReport(assessment.id);
+                            }}
+                          >
+                            <Eye className="w-4 h-4 mr-1" />
+                            View
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
