@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, BookOpen, Clock, Play, X } from "lucide-react";
+import { ArrowLeft, BookOpen, Clock, Play } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -19,7 +19,8 @@ interface Module {
   };
 }
 
-const modules: Module[] = [
+// All modules pool - rotates every 4 days
+const allModules: Module[] = [
   {
     id: 1,
     number: 1,
@@ -116,11 +117,137 @@ const modules: Module[] = [
       ],
     },
   },
+  {
+    id: 5,
+    number: 5,
+    category: "Communication",
+    title: "Strategic Messaging",
+    description: "Craft messages that resonate with executives",
+    duration: "14 min",
+    level: "Advanced",
+    content: {
+      overview: "Learn to communicate complex ideas simply and persuasively. This module covers the pyramid principle and other frameworks for executive-level communication.",
+      keyPoints: [
+        "Lead with the conclusion - executives want the answer first",
+        "Use the pyramid principle: conclusion, then supporting points",
+        "Limit to 3 key messages per communication",
+        "Tailor your message to your audience's priorities",
+        "Use concrete examples to illustrate abstract concepts",
+      ],
+      exercises: [
+        "Rewrite a recent email using the pyramid principle",
+        "Practice the 'elevator pitch' for your current project",
+        "Get feedback from a mentor on your strategic messaging",
+      ],
+    },
+  },
+  {
+    id: 6,
+    number: 6,
+    category: "Communication",
+    title: "Active Listening Mastery",
+    description: "Demonstrate engagement and understanding",
+    duration: "8 min",
+    level: "Intermediate",
+    content: {
+      overview: "Active listening is a key component of executive presence. Learn techniques to show you're fully engaged and to draw out important information from others.",
+      keyPoints: [
+        "Maintain eye contact and open body language",
+        "Use reflective statements: 'What I'm hearing is...'",
+        "Ask clarifying questions that show depth of understanding",
+        "Avoid interrupting - let speakers complete their thoughts",
+        "Summarize key points to confirm understanding",
+      ],
+      exercises: [
+        "Practice reflective listening in your next meeting",
+        "Count to 3 before responding in conversations",
+        "Ask at least one follow-up question in every meeting",
+      ],
+    },
+  },
+  {
+    id: 7,
+    number: 7,
+    category: "Presence",
+    title: "Body Language Essentials",
+    description: "Non-verbal communication that commands respect",
+    duration: "10 min",
+    level: "Beginner",
+    content: {
+      overview: "Your body speaks before you do. This module covers the essential non-verbal cues that project confidence, competence, and leadership.",
+      keyPoints: [
+        "Maintain an open posture - avoid crossing arms",
+        "Use purposeful hand gestures to emphasize points",
+        "Control nervous habits like fidgeting or touching face",
+        "Mirror body language to build rapport",
+        "Use space effectively - don't shrink yourself",
+      ],
+      exercises: [
+        "Video record yourself presenting and analyze body language",
+        "Practice power poses before important interactions",
+        "Get feedback on your non-verbal communication",
+      ],
+    },
+  },
+  {
+    id: 8,
+    number: 8,
+    category: "Storytelling",
+    title: "The Executive Story Arc",
+    description: "Structure narratives that inspire action",
+    duration: "15 min",
+    level: "Advanced",
+    content: {
+      overview: "Stories are the most powerful tool for influence. Learn the story arc structure that captures attention and drives action in business contexts.",
+      keyPoints: [
+        "Open with a hook - a surprising fact or question",
+        "Establish stakes - why should the audience care?",
+        "Build tension through challenges and obstacles",
+        "Deliver a turning point that changes everything",
+        "Close with a clear call to action",
+      ],
+      exercises: [
+        "Map your next presentation to the story arc structure",
+        "Practice telling a 2-minute leadership story",
+        "Collect personal stories that illustrate key leadership lessons",
+      ],
+    },
+  },
+];
+
+// Weekly focus themes
+const weeklyThemes = [
+  { theme: "Gravitas Building", description: "Master the foundations of executive authority" },
+  { theme: "Communication Excellence", description: "Sharpen your strategic messaging skills" },
+  { theme: "Presence & Impact", description: "Develop commanding non-verbal communication" },
+  { theme: "Storytelling Power", description: "Learn to inspire through narrative" },
 ];
 
 export default function Training() {
   const navigate = useNavigate();
   const [selectedModule, setSelectedModule] = useState<Module | null>(null);
+
+  // Calculate which modules to show based on date (rotates every 4 days)
+  const { currentModules, currentTheme } = useMemo(() => {
+    const startDate = new Date('2025-01-01').getTime();
+    const now = new Date().getTime();
+    const daysSinceStart = Math.floor((now - startDate) / (1000 * 60 * 60 * 24));
+    const rotationIndex = Math.floor(daysSinceStart / 4); // Changes every 4 days
+    
+    // Get 4 modules starting from rotation index
+    const modules = [];
+    for (let i = 0; i < 4; i++) {
+      const index = (rotationIndex + i) % allModules.length;
+      const module = { ...allModules[index], number: i + 1 };
+      modules.push(module);
+    }
+    
+    // Get current theme
+    const themeIndex = rotationIndex % weeklyThemes.length;
+    const theme = weeklyThemes[themeIndex];
+    
+    return { currentModules: modules, currentTheme: theme };
+  }, []);
 
   const getLevelColor = (level: string) => {
     if (level === "Advanced") return "text-[#C4A84D]";
@@ -242,8 +369,11 @@ export default function Training() {
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
             Training <span className="text-[#C4A84D]">Modules</span>
           </h1>
-          <p className="text-gray-500 mb-10">
+          <p className="text-gray-500 mb-1">
             Structured micro-courses to develop your executive presence skills
+          </p>
+          <p className="text-xs text-[#C4A84D] mb-10">
+            Modules refresh every 4 days
           </p>
 
           {/* This Week's Focus */}
@@ -254,16 +384,16 @@ export default function Training() {
               </div>
               <div>
                 <h2 className="text-xl font-bold text-gray-900">
-                  This Week's Focus: <span className="text-[#C4A84D]">Gravitas Building</span>
+                  Current Focus: <span className="text-[#C4A84D]">{currentTheme.theme}</span>
                 </h2>
-                <p className="text-gray-500">Complete all 4 modules this week to master gravitas building</p>
+                <p className="text-gray-500">{currentTheme.description}</p>
               </div>
             </div>
           </div>
 
           {/* Modules Grid */}
           <div className="grid grid-cols-2 gap-6">
-            {modules.map((module) => (
+            {currentModules.map((module) => (
               <div
                 key={module.id}
                 onClick={() => setSelectedModule(module)}
