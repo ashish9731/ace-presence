@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      api_usage: {
+        Row: {
+          called_at: string
+          function_name: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          called_at?: string
+          function_name: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          called_at?: string
+          function_name?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       assessments: {
         Row: {
           appearance_analysis: Json | null
