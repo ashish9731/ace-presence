@@ -121,7 +121,6 @@ export default function Pricing() {
     
     if (data?.plan_name) {
       setExistingPlan(data.plan_name);
-      // Don't redirect - stay on pricing page if user navigated here intentionally
     }
   };
 
@@ -136,16 +135,44 @@ export default function Pricing() {
       return;
     }
 
+    // Prevent selecting free_trial if user already has any plan
+    if (planKey === "free_trial" && existingPlan) {
+      toast.error("Free trial already used", { 
+        description: "You have already used your free trial. Please select a paid plan to continue." 
+      });
+      return;
+    }
+
+    // Prevent downgrading to free_trial from a paid plan
+    if (planKey === "free_trial" && existingPlan && existingPlan !== "free_trial") {
+      toast.error("Cannot downgrade to free trial");
+      return;
+    }
+
     setSelectingPlan(planKey);
     
     try {
-      const { error } = await supabase
-        .from("user_plans")
-        .insert({ user_id: user.id, plan_name: planKey });
+      if (existingPlan) {
+        // User already has a plan - update it (upgrade)
+        const { error } = await supabase
+          .from("user_plans")
+          .update({ plan_name: planKey, selected_at: new Date().toISOString() })
+          .eq("user_id", user.id);
 
-      if (error) throw error;
+        if (error) throw error;
+        
+        toast.success(`Upgraded to ${planFeatures[planKey as keyof typeof planFeatures].name} plan!`);
+      } else {
+        // New user - insert plan
+        const { error } = await supabase
+          .from("user_plans")
+          .insert({ user_id: user.id, plan_name: planKey });
+
+        if (error) throw error;
+        
+        toast.success(`${planFeatures[planKey as keyof typeof planFeatures].name} plan activated!`);
+      }
       
-      toast.success(`${planFeatures[planKey as keyof typeof planFeatures].name} plan activated!`);
       navigate("/dashboard");
     } catch (error: any) {
       toast.error("Failed to select plan", { description: error.message });
@@ -308,14 +335,28 @@ export default function Pricing() {
                       plan.popular
                         ? "bg-[#C4A84D] hover:bg-[#B39940] text-white"
                         : "bg-[#C4A84D]/10 hover:bg-[#C4A84D]/20 text-[#C4A84D] border border-[#C4A84D]/30"
+                    } ${
+                      key === "free_trial" && existingPlan 
+                        ? "opacity-50 cursor-not-allowed" 
+                        : ""
+                    } ${
+                      existingPlan === key
+                        ? "bg-gray-200 text-gray-500 cursor-default hover:bg-gray-200"
+                        : ""
                     }`}
                     onClick={() => handleSelectPlan(key)}
-                    disabled={selectingPlan !== null}
+                    disabled={selectingPlan !== null || (key === "free_trial" && !!existingPlan) || existingPlan === key}
                   >
                     {selectingPlan === key ? (
                       <Loader2 className="w-4 h-4 animate-spin mr-2" />
                     ) : null}
-                    {plan.cta}
+                    {existingPlan === key 
+                      ? "Current Plan" 
+                      : key === "free_trial" && existingPlan 
+                        ? "Trial Used" 
+                        : existingPlan && key !== "free_trial" 
+                          ? "Upgrade" 
+                          : plan.cta}
                   </Button>
                 </div>
               );

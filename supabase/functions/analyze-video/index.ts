@@ -150,14 +150,44 @@ serve(async (req) => {
 
     console.log('Starting comprehensive video analysis for:', assessmentId);
 
-    // Download video and extract audio for transcription
+    // Download video for transcription
+    console.log('Downloading video from storage...');
     const videoResponse = await fetch(urlData.signedUrl);
-    const videoBlob = await videoResponse.blob();
+    
+    if (!videoResponse.ok) {
+      throw new Error(`Failed to download video: ${videoResponse.status}`);
+    }
+    
+    const videoArrayBuffer = await videoResponse.arrayBuffer();
+    const videoBytes = new Uint8Array(videoArrayBuffer);
+    
+    console.log('Video downloaded, size:', videoBytes.length, 'bytes');
+    
+    // Check file size - Whisper has a 25MB limit
+    const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB
+    if (videoBytes.length > MAX_FILE_SIZE) {
+      console.error('Video file too large:', videoBytes.length, 'bytes');
+      throw new Error('Video file exceeds 25MB limit. Please record a shorter video (under 4 minutes).');
+    }
+    
+    if (videoBytes.length < 1000) {
+      console.error('Video file too small:', videoBytes.length, 'bytes');
+      throw new Error('Video file appears to be empty or corrupted. Please try recording again.');
+    }
+    
+    // Determine file extension from video path
+    const fileExtension = videoPath.toLowerCase().endsWith('.mov') ? 'mov' : 
+                          videoPath.toLowerCase().endsWith('.webm') ? 'webm' : 'mp4';
+    const mimeType = fileExtension === 'mov' ? 'video/quicktime' : 
+                     fileExtension === 'webm' ? 'video/webm' : 'video/mp4';
     
     // Step 1: Transcribe audio using Whisper with word-level timestamps
     console.log('Transcribing audio with Whisper...');
+    console.log('File type:', mimeType, 'Extension:', fileExtension);
+    
+    const videoBlob = new Blob([videoBytes], { type: mimeType });
     const formData = new FormData();
-    formData.append('file', videoBlob, 'video.mp4');
+    formData.append('file', videoBlob, `video.${fileExtension}`);
     formData.append('model', 'whisper-1');
     formData.append('response_format', 'verbose_json');
     formData.append('timestamp_granularities[]', 'word');
@@ -171,9 +201,10 @@ serve(async (req) => {
     });
 
     if (!transcriptResponse.ok) {
-      const error = await transcriptResponse.text();
-      console.error('Whisper error:', error);
-      throw new Error(`Transcription failed: ${error}`);
+      const errorText = await transcriptResponse.text();
+      console.error('Whisper error:', errorText);
+      console.error('Response status:', transcriptResponse.status);
+      throw new Error(`Transcription failed: ${errorText}`);
     }
 
     const transcriptData = await transcriptResponse.json();
