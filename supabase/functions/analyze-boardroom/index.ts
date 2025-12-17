@@ -48,8 +48,8 @@ serve(async (req) => {
     // Create service role client for database operations (needed for rate limiting check)
     const supabaseService = createClient(supabaseUrl, supabaseServiceKey);
     
-    // Rate limiting: max 20 boardroom analyses per hour per user
-    const RATE_LIMIT = 20;
+    // Rate limiting: max 10 boardroom analyses per hour per user
+    const RATE_LIMIT = 10;
     const RATE_WINDOW_HOURS = 1;
     
     const { data: recentUsage, error: usageError } = await supabaseService
