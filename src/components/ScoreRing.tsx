@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { useEffect, useState, useRef } from "react";
 
 interface ScoreRingProps {
   score: number;
@@ -6,6 +7,8 @@ interface ScoreRingProps {
   label?: string;
   showLabel?: boolean;
   className?: string;
+  animate?: boolean;
+  animationDelay?: number;
 }
 
 const sizeConfig = {
@@ -36,16 +39,79 @@ export function ScoreRing({
   size = "md", 
   label,
   showLabel = true,
-  className 
+  className,
+  animate = true,
+  animationDelay = 0
 }: ScoreRingProps) {
+  const [displayScore, setDisplayScore] = useState(animate ? 0 : score);
+  const [hasAnimated, setHasAnimated] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  
   const config = sizeConfig[size];
   const radius = (config.ring - config.stroke) / 2;
   const circumference = radius * 2 * Math.PI;
-  const offset = circumference - (score / 100) * circumference;
-  const color = getScoreColor(score);
+  const offset = circumference - (displayScore / 100) * circumference;
+  const color = getScoreColor(displayScore);
+
+  useEffect(() => {
+    if (!animate || hasAnimated) {
+      setDisplayScore(score);
+      return;
+    }
+
+    // Use Intersection Observer for triggering animation when visible
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !hasAnimated) {
+          setHasAnimated(true);
+          
+          // Delay start if specified
+          const timeoutId = setTimeout(() => {
+            const duration = 1500; // 1.5 seconds
+            const startTime = Date.now();
+            const startScore = 0;
+            const endScore = score;
+            
+            const animateScore = () => {
+              const elapsed = Date.now() - startTime;
+              const progress = Math.min(elapsed / duration, 1);
+              
+              // Easing function for smooth animation
+              const easeOutQuart = 1 - Math.pow(1 - progress, 4);
+              const currentScore = Math.round(startScore + (endScore - startScore) * easeOutQuart);
+              
+              setDisplayScore(currentScore);
+              
+              if (progress < 1) {
+                requestAnimationFrame(animateScore);
+              }
+            };
+            
+            requestAnimationFrame(animateScore);
+          }, animationDelay);
+          
+          return () => clearTimeout(timeoutId);
+        }
+      },
+      { threshold: 0.3 }
+    );
+
+    if (ref.current) {
+      observer.observe(ref.current);
+    }
+
+    return () => observer.disconnect();
+  }, [score, animate, hasAnimated, animationDelay]);
+
+  // Update display score when prop changes after initial animation
+  useEffect(() => {
+    if (hasAnimated) {
+      setDisplayScore(score);
+    }
+  }, [score, hasAnimated]);
 
   return (
-    <div className={cn("flex flex-col items-center", className)}>
+    <div ref={ref} className={cn("flex flex-col items-center", className)}>
       <div className="relative" style={{ width: config.ring, height: config.ring }}>
         <svg className="w-full h-full transform -rotate-90">
           {/* Background circle */}
@@ -69,7 +135,7 @@ export function ScoreRing({
             strokeLinecap="round"
             strokeDasharray={circumference}
             strokeDashoffset={offset}
-            className="transition-all duration-1000 ease-out"
+            className="transition-all duration-300 ease-out"
             style={{
               filter: `drop-shadow(0 0 6px ${color}40)`,
             }}
@@ -79,10 +145,10 @@ export function ScoreRing({
         {/* Center score */}
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span 
-            className={cn("font-display font-bold", config.text)}
+            className={cn("font-display font-bold tabular-nums", config.text)}
             style={{ color }}
           >
-            {Math.round(score)}
+            {Math.round(displayScore)}
           </span>
         </div>
       </div>
@@ -99,7 +165,7 @@ export function ScoreRing({
             className={cn("font-medium", config.labelSize)}
             style={{ color }}
           >
-            {getScoreLabel(score)}
+            {getScoreLabel(displayScore)}
           </p>
         </div>
       )}
