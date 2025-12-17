@@ -730,32 +730,56 @@ function ParameterCard({
   );
 }
 
-// Helper function to draw score circle in PDF
-function drawScoreCircle(doc: jsPDF, x: number, y: number, score: number, size: number, color: number[]) {
+// Helper function to get score level info for PDF
+function getScoreLevelPDF(score: number): { label: string; color: number[] } {
+  if (score >= 85) return { label: "Excellent", color: [40, 167, 69] };
+  if (score >= 80) return { label: "Strong", color: [40, 167, 69] };
+  if (score >= 70) return { label: "Good", color: [142, 189, 85] };
+  if (score >= 60) return { label: "Developing", color: [245, 158, 11] };
+  if (score >= 50) return { label: "Needs Work", color: [245, 158, 11] };
+  return { label: "Focus Area", color: [220, 53, 69] };
+}
+
+// Helper function to draw score circle in PDF - improved visual matching web UI
+function drawScoreCircle(doc: jsPDF, x: number, y: number, score: number, size: number, color: number[], withLabel: boolean = false) {
   const radius = size / 2;
   
-  // Background circle
-  doc.setDrawColor(220, 220, 220);
-  doc.setLineWidth(3);
-  doc.circle(x, y, radius, 'S');
+  // Background circle (light gray)
+  doc.setDrawColor(230, 230, 230);
+  doc.setLineWidth(size * 0.1);
+  doc.circle(x, y, radius * 0.85, 'S');
   
-  // Score arc (simplified as filled circle)
-  doc.setFillColor(color[0], color[1], color[2]);
+  // Score arc - colored circle
   doc.setDrawColor(color[0], color[1], color[2]);
-  doc.setLineWidth(4);
+  doc.setLineWidth(size * 0.1);
   
-  // Draw arc based on score
-  const startAngle = -90;
-  const endAngle = startAngle + (score / 100) * 360;
+  // Draw arc approximation
+  const steps = Math.max(10, Math.ceil(score / 3));
+  const startAngle = -Math.PI / 2;
+  const endAngle = startAngle + (score / 100) * 2 * Math.PI;
   
-  // Simple arc approximation
-  doc.setDrawColor(color[0], color[1], color[2]);
-  doc.circle(x, y, radius, 'S');
+  for (let i = 0; i < steps; i++) {
+    const angle1 = startAngle + (i / steps) * (endAngle - startAngle);
+    const angle2 = startAngle + ((i + 1) / steps) * (endAngle - startAngle);
+    const x1 = x + radius * 0.85 * Math.cos(angle1);
+    const y1 = y + radius * 0.85 * Math.sin(angle1);
+    const x2 = x + radius * 0.85 * Math.cos(angle2);
+    const y2 = y + radius * 0.85 * Math.sin(angle2);
+    doc.line(x1, y1, x2, y2);
+  }
   
-  // Score text
-  doc.setFontSize(size * 0.8);
+  // Score text in center
+  doc.setFontSize(size * 0.4);
   doc.setTextColor(color[0], color[1], color[2]);
-  doc.text(`${Math.round(score)}`, x, y + 3, { align: 'center' });
+  doc.text(`${Math.round(score)}`, x, y + size * 0.15, { align: 'center' });
+  
+  // Optional: Score level label
+  if (withLabel) {
+    const levelInfo = getScoreLevelPDF(score);
+    doc.setFontSize(size * 0.18);
+    doc.setTextColor(levelInfo.color[0], levelInfo.color[1], levelInfo.color[2]);
+    doc.text(levelInfo.label, x - radius - 3, y + 2, { align: 'right' });
+  }
 }
 
 // Helper function to draw horizontal bar chart
@@ -782,6 +806,88 @@ function drawBarChart(doc: jsPDF, x: number, y: number, width: number, score: nu
   doc.text(label, x, y - 2);
 }
 
+// Helper to draw a parameter section with score ring
+function drawParameterSection(
+  doc: jsPDF, 
+  yStart: number, 
+  pageWidth: number, 
+  paramName: string, 
+  rawValue: string | undefined, 
+  score: number, 
+  observation: string, 
+  coaching: string, 
+  reference: string | undefined,
+  accentColor: number[]
+): number {
+  let y = yStart;
+  const levelInfo = getScoreLevelPDF(score);
+  
+  // Parameter header with score circle
+  doc.setFillColor(250, 250, 250);
+  doc.roundedRect(15, y - 5, pageWidth - 30, 35, 2, 2, 'F');
+  
+  // Parameter name
+  doc.setFontSize(11);
+  doc.setTextColor(40, 40, 40);
+  doc.text(paramName, 20, y + 3);
+  
+  // Raw value
+  if (rawValue) {
+    doc.setFontSize(8);
+    doc.setTextColor(120, 120, 120);
+    doc.text(rawValue, 20, y + 10);
+  }
+  
+  // Score level label + score circle on right
+  doc.setFontSize(8);
+  doc.setTextColor(levelInfo.color[0], levelInfo.color[1], levelInfo.color[2]);
+  doc.text(levelInfo.label, pageWidth - 45, y + 5, { align: 'right' });
+  
+  // Draw score circle
+  drawScoreCircle(doc, pageWidth - 30, y + 8, score, 24, levelInfo.color, false);
+  
+  y += 38;
+  
+  // Observation section
+  doc.setFillColor(255, 255, 255);
+  doc.setFontSize(7);
+  doc.setTextColor(120, 120, 120);
+  doc.text("◉  OBSERVATION", 20, y);
+  doc.setFontSize(9);
+  doc.setTextColor(60, 60, 60);
+  const obsLines = doc.splitTextToSize(observation, pageWidth - 45);
+  doc.text(obsLines.slice(0, 2), 25, y + 5);
+  y += 5 + obsLines.slice(0, 2).length * 4.5;
+  
+  // Coaching section
+  doc.setFontSize(7);
+  doc.setTextColor(120, 120, 120);
+  doc.text("♀  COACHING RECOMMENDATION", 20, y);
+  doc.setFontSize(9);
+  doc.setTextColor(60, 60, 60);
+  const coachLines = doc.splitTextToSize(coaching, pageWidth - 45);
+  doc.text(coachLines.slice(0, 2), 25, y + 5);
+  y += 5 + coachLines.slice(0, 2).length * 4.5;
+  
+  // Reference section
+  if (reference) {
+    doc.setFontSize(7);
+    doc.setTextColor(120, 120, 120);
+    doc.text("↗  RESEARCH REFERENCE", 20, y);
+    doc.setFontSize(8);
+    doc.setTextColor(100, 100, 100);
+    doc.text(reference.substring(0, 90), 25, y + 5);
+    y += 12;
+  }
+  
+  // Separator line
+  doc.setDrawColor(240, 240, 240);
+  doc.setLineWidth(0.5);
+  doc.line(20, y, pageWidth - 20, y);
+  
+  return y + 8;
+}
+
 function generatePDF(assessment: Assessment) {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -801,48 +907,107 @@ function generatePDF(assessment: Assessment) {
   
   // ===== PAGE 1: Cover & Overview =====
   
-  // Header gradient simulation
+  // Header bar
   doc.setFillColor(34, 45, 90);
-  doc.rect(0, 0, pageWidth, 50, 'F');
+  doc.rect(0, 0, pageWidth, 45, 'F');
   
   // Title
-  doc.setFontSize(28);
+  doc.setFontSize(26);
   doc.setTextColor(255, 255, 255);
-  doc.text("Executive Presence", pageWidth / 2, 25, { align: "center" });
-  doc.setFontSize(16);
-  doc.text("Assessment Report", pageWidth / 2, 38, { align: "center" });
+  doc.text("Executive Presence Report", pageWidth / 2, 28, { align: "center" });
   
   // Date & Duration
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   doc.setTextColor(200, 200, 200);
-  doc.text(`Generated: ${new Date().toLocaleDateString()} | Video Duration: ${Math.round(assessment.video_duration_seconds / 60)} minutes`, pageWidth / 2, 48, { align: "center" });
+  doc.text(`Generated: ${new Date().toLocaleDateString()} | Video Duration: ${Math.round(assessment.video_duration_seconds / 60)} minutes`, pageWidth / 2, 40, { align: "center" });
   
-  // Overall Score Section
-  doc.setFontSize(12);
-  doc.setTextColor(100, 100, 100);
-  doc.text("OVERALL EP SCORE", pageWidth / 2, 70, { align: "center" });
+  // Summary text area
+  const storytellingData = assessment.storytelling_analysis as StorytellingData;
+  let yPos = 55;
   
-  // Large score display
-  doc.setFontSize(60);
-  doc.setTextColor(59, 130, 246);
-  doc.text(`${Math.round(assessment.overall_score)}`, pageWidth / 2, 100, { align: "center" });
-  doc.setFontSize(20);
-  doc.setTextColor(150, 150, 150);
-  doc.text("/100", pageWidth / 2 + 35, 100);
-  
-  // Score level
-  const overallLevel = getScoreLevel(assessment.overall_score);
-  doc.setFontSize(14);
-  if (assessment.overall_score >= 70) {
-    doc.setTextColor(40, 167, 69);
-  } else if (assessment.overall_score >= 50) {
-    doc.setTextColor(245, 158, 11);
-  } else {
-    doc.setTextColor(220, 53, 69);
+  if (storytellingData?.summary) {
+    doc.setFontSize(10);
+    doc.setTextColor(60, 60, 60);
+    const summaryLines = doc.splitTextToSize(storytellingData.summary, pageWidth - 90);
+    doc.text(summaryLines.slice(0, 4), 75, yPos + 5);
+    yPos += Math.min(summaryLines.length, 4) * 5 + 10;
   }
-  doc.text(overallLevel.label, pageWidth / 2, 115, { align: "center" });
   
-  // Bucket scores visualization
+  // Large Overall Score Circle on the left
+  const overallColor = getScoreLevelPDF(assessment.overall_score).color;
+  const overallLevel = getScoreLevelPDF(assessment.overall_score);
+  
+  // Draw large overall score ring
+  const mainCircleX = 40;
+  const mainCircleY = 85;
+  const mainCircleSize = 50;
+  
+  doc.setDrawColor(230, 230, 230);
+  doc.setLineWidth(5);
+  doc.circle(mainCircleX, mainCircleY, 22, 'S');
+  
+  doc.setDrawColor(overallColor[0], overallColor[1], overallColor[2]);
+  doc.setLineWidth(5);
+  // Draw arc
+  const steps = Math.max(15, Math.ceil(assessment.overall_score / 2));
+  const startAngle = -Math.PI / 2;
+  const endAngle = startAngle + (assessment.overall_score / 100) * 2 * Math.PI;
+  for (let i = 0; i < steps; i++) {
+    const a1 = startAngle + (i / steps) * (endAngle - startAngle);
+    const a2 = startAngle + ((i + 1) / steps) * (endAngle - startAngle);
+    doc.line(
+      mainCircleX + 22 * Math.cos(a1), mainCircleY + 22 * Math.sin(a1),
+      mainCircleX + 22 * Math.cos(a2), mainCircleY + 22 * Math.sin(a2)
+    );
+  }
+  
+  // Score number
+  doc.setFontSize(24);
+  doc.setTextColor(overallColor[0], overallColor[1], overallColor[2]);
+  doc.text(`${Math.round(assessment.overall_score)}`, mainCircleX, mainCircleY + 8, { align: 'center' });
+  
+  // Labels below circle
+  doc.setFontSize(9);
+  doc.setTextColor(80, 80, 80);
+  doc.text("Overall EP Score", mainCircleX, mainCircleY + 30, { align: 'center' });
+  doc.setFontSize(10);
+  doc.setTextColor(overallColor[0], overallColor[1], overallColor[2]);
+  doc.text(overallLevel.label, mainCircleX, mainCircleY + 37, { align: 'center' });
+  
+  yPos = 130;
+  
+  // Top Strengths box
+  if (storytellingData?.top_strengths?.length > 0) {
+    doc.setFillColor(240, 253, 244);
+    doc.roundedRect(15, yPos - 5, (pageWidth - 40) / 2, 30, 2, 2, 'F');
+    
+    doc.setFontSize(9);
+    doc.setTextColor(40, 167, 69);
+    doc.text("★ Top Strengths", 20, yPos + 3);
+    doc.setFontSize(8);
+    doc.setTextColor(60, 60, 60);
+    storytellingData.top_strengths.slice(0, 2).forEach((s, i) => {
+      doc.text(`• ${s.substring(0, 35)}`, 20, yPos + 11 + i * 6);
+    });
+  }
+  
+  // Priority Focus box
+  if (storytellingData?.priority_development) {
+    doc.setFillColor(254, 243, 199);
+    doc.roundedRect(pageWidth / 2 + 5, yPos - 5, (pageWidth - 40) / 2, 30, 2, 2, 'F');
+    
+    doc.setFontSize(9);
+    doc.setTextColor(245, 158, 11);
+    doc.text("◉ Priority Focus Area", pageWidth / 2 + 10, yPos + 3);
+    doc.setFontSize(8);
+    doc.setTextColor(60, 60, 60);
+    const focusLines = doc.splitTextToSize(storytellingData.priority_development, (pageWidth - 50) / 2);
+    doc.text(focusLines.slice(0, 2), pageWidth / 2 + 10, yPos + 11);
+  }
+  
+  yPos += 40;
+  
+  // Four dimension scores with circles
   const buckets = [
     { name: "Gravitas", score: gravitasScore, weight: "25%", color: gravitasColor },
     { name: "Communication", score: assessment.communication_score, weight: "30%", color: commColor },
@@ -850,39 +1015,30 @@ function generatePDF(assessment: Assessment) {
     { name: "Storytelling", score: assessment.storytelling_score, weight: "20%", color: storyColor },
   ];
   
-  let yPos = 140;
-  const barWidth = 100;
-  const barX = 50;
-  
-  doc.setFontSize(12);
-  doc.setTextColor(34, 45, 90);
-  doc.text("DIMENSION BREAKDOWN", pageWidth / 2, yPos - 10, { align: "center" });
-  
-  buckets.forEach((bucket) => {
-    drawBarChart(doc, barX, yPos, barWidth, bucket.score, bucket.color, `${bucket.name} (${bucket.weight})`);
-    yPos += 25;
+  const colWidth = (pageWidth - 40) / 4;
+  buckets.forEach((bucket, i) => {
+    const bx = 20 + colWidth * i + colWidth / 2;
+    
+    // Score value
+    doc.setFontSize(18);
+    doc.setTextColor(40, 40, 40);
+    doc.text(`${Math.round(bucket.score)}`, bx, yPos + 5, { align: 'center' });
+    
+    // Dimension name
+    doc.setFontSize(8);
+    doc.setTextColor(100, 100, 100);
+    doc.text(bucket.name, bx, yPos + 12, { align: 'center' });
+    
+    // Weight
+    doc.setFontSize(7);
+    doc.setTextColor(150, 150, 150);
+    doc.text(bucket.weight, bx, yPos + 18, { align: 'center' });
   });
-  
-  // Summary box
-  const storytellingData = assessment.storytelling_analysis as StorytellingData;
-  if (storytellingData?.summary) {
-    doc.setFillColor(245, 247, 250);
-    doc.roundedRect(15, yPos + 10, pageWidth - 30, 40, 3, 3, 'F');
-    
-    doc.setFontSize(10);
-    doc.setTextColor(34, 45, 90);
-    doc.text("SUMMARY", 20, yPos + 22);
-    
-    doc.setFontSize(9);
-    doc.setTextColor(80, 80, 80);
-    const summaryLines = doc.splitTextToSize(storytellingData.summary, pageWidth - 45);
-    doc.text(summaryLines.slice(0, 3), 20, yPos + 32);
-  }
   
   // Footer
   doc.setFontSize(8);
   doc.setTextColor(150, 150, 150);
-  doc.text("Executive Presence Assessment | Powered by AI Analysis", pageWidth / 2, pageHeight - 10, { align: "center" });
+  doc.text("Executive Presence Assessment | AI-Powered Analysis", pageWidth / 2, pageHeight - 10, { align: "center" });
   
   // ===== PAGE 2: Gravitas Analysis =====
   doc.addPage();
@@ -893,55 +1049,48 @@ function generatePDF(assessment: Assessment) {
   doc.setFontSize(18);
   doc.setTextColor(255, 255, 255);
   doc.text("GRAVITAS ANALYSIS", 20, 20);
-  doc.setFontSize(12);
-  doc.text(`Score: ${Math.round(gravitasScore)}/100`, pageWidth - 20, 20, { align: "right" });
   
-  yPos = 45;
+  // Draw score circle in header
+  drawScoreCircle(doc, pageWidth - 30, 15, gravitasScore, 22, gravitasColor as number[], false);
+  
+  yPos = 40;
+  
+  // Methodology note
+  doc.setFillColor(250, 245, 255);
+  doc.roundedRect(15, yPos, pageWidth - 30, 15, 2, 2, 'F');
+  doc.setFontSize(8);
+  doc.setTextColor(120, 100, 140);
+  doc.text("Methodology: Gravitas assessment based on Sylvia Ann Hewlett's Executive Presence framework measuring command, authority, and emotional intelligence.", 20, yPos + 10);
+  
+  yPos += 25;
   
   if (gravitasData?.parameters) {
     const gravitasParams = gravitasData.parameters;
-    const gravitasTableData: string[][] = [];
     
     Object.entries(gravitasParams).forEach(([key, param]) => {
       const paramData = param as ParameterData;
-      gravitasTableData.push([
+      
+      // Check for page break
+      if (yPos > pageHeight - 70) {
+        doc.addPage();
+        doc.setFillColor(147, 51, 234);
+        doc.rect(0, 0, pageWidth, 20, 'F');
+        doc.setFontSize(12);
+        doc.setTextColor(255, 255, 255);
+        doc.text("GRAVITAS ANALYSIS (continued)", 20, 13);
+        yPos = 30;
+      }
+      
+      yPos = drawParameterSection(
+        doc, yPos, pageWidth,
         parameterLabels[key] || key,
-        `${Math.round(paramData.score)}/100`,
-        paramData.raw_value || '-',
-        paramData.observation.substring(0, 60) + (paramData.observation.length > 60 ? '...' : '')
-      ]);
-    });
-    
-    autoTable(doc, {
-      startY: yPos,
-      head: [['Parameter', 'Score', 'Value', 'Observation']],
-      body: gravitasTableData,
-      styles: { fontSize: 8, cellPadding: 3 },
-      headStyles: { fillColor: [147, 51, 234] },
-      alternateRowStyles: { fillColor: [250, 245, 255] },
-      columnStyles: {
-        0: { cellWidth: 40 },
-        1: { cellWidth: 20 },
-        2: { cellWidth: 40 },
-        3: { cellWidth: 'auto' },
-      },
-    });
-    
-    yPos = (doc as any).lastAutoTable?.finalY + 10 || yPos + 50;
-    
-    // Coaching recommendations for gravitas
-    doc.setFontSize(11);
-    doc.setTextColor(147, 51, 234);
-    doc.text("Coaching Recommendations", 20, yPos);
-    yPos += 8;
-    
-    Object.entries(gravitasParams).slice(0, 3).forEach(([key, param]) => {
-      const paramData = param as ParameterData;
-      doc.setFontSize(9);
-      doc.setTextColor(60, 60, 60);
-      const coachLines = doc.splitTextToSize(`• ${parameterLabels[key] || key}: ${paramData.coaching}`, pageWidth - 40);
-      doc.text(coachLines.slice(0, 2), 20, yPos);
-      yPos += coachLines.slice(0, 2).length * 5 + 3;
+        paramData.raw_value,
+        paramData.score,
+        paramData.observation,
+        paramData.coaching,
+        paramData.reference,
+        gravitasColor as number[]
+      );
     });
   }
   
