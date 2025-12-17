@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
+import { SmtpClient } from "https://deno.land/x/smtp@v0.7.0/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -38,23 +38,20 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Sending coaching request email for:", name, email);
 
     const smtpHost = Deno.env.get("SMTP_HOST");
-    const smtpPort = parseInt(Deno.env.get("SMTP_PORT") || "587");
+    const smtpPort = parseInt(Deno.env.get("SMTP_PORT") || "25");
     const smtpUser = Deno.env.get("SMTP_USER");
 
     if (!smtpHost || !smtpUser) {
       throw new Error("SMTP configuration is missing");
     }
 
-    const client = new SMTPClient({
-      connection: {
-        hostname: smtpHost,
-        port: smtpPort,
-        tls: false,
-        auth: {
-          username: smtpUser,
-          password: "", // No password required
-        },
-      },
+    console.log("SMTP Config:", { host: smtpHost, port: smtpPort, user: smtpUser });
+
+    const client = new SmtpClient();
+
+    await client.connect({
+      hostname: smtpHost,
+      port: smtpPort,
     });
 
     const htmlContent = `
@@ -92,7 +89,7 @@ const handler = async (req: Request): Promise<Response> => {
       from: smtpUser,
       to: "info@c2x.co.in",
       subject: `New Coaching Request from ${name}`,
-      content: "auto",
+      content: htmlContent,
       html: htmlContent,
     });
 
