@@ -1,7 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { Resend } from "https://esm.sh/resend@2.0.0";
-
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -39,45 +37,70 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("Sending coaching request email for:", name, email);
 
-    const emailResponse = await resend.emails.send({
-      from: "EP Assessment <onboarding@resend.dev>",
-      to: ["info@c2x.co.in"],
-      subject: `New Coaching Request from ${name}`,
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h1 style="color: #C4A84D; border-bottom: 2px solid #C4A84D; padding-bottom: 10px;">
-            New Executive Coaching Request
-          </h1>
-          
-          <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <h3 style="margin-top: 0; color: #333;">Contact Details</h3>
-            <p><strong>Name:</strong> ${name}</p>
-            <p><strong>Email:</strong> <a href="mailto:${email}">${email}</a></p>
-          </div>
-          
-          <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <h3 style="margin-top: 0; color: #333;">Coaching Preferences</h3>
-            <p><strong>Primary Goal:</strong> ${primaryGoal || "Not specified"}</p>
-            <p><strong>Preferred Times:</strong> ${preferredTimes || "Not specified"}</p>
-          </div>
-          
-          ${notes ? `
-          <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <h3 style="margin-top: 0; color: #333;">Additional Notes</h3>
-            <p>${notes}</p>
-          </div>
-          ` : ''}
-          
-          <p style="color: #666; font-size: 12px; margin-top: 30px;">
-            This request was submitted via the Executive Presence Assessment App.
-          </p>
-        </div>
-      `,
+    const smtpHost = Deno.env.get("SMTP_HOST");
+    const smtpPort = parseInt(Deno.env.get("SMTP_PORT") || "587");
+    const smtpUser = Deno.env.get("SMTP_USER");
+
+    if (!smtpHost || !smtpUser) {
+      throw new Error("SMTP configuration is missing");
+    }
+
+    const client = new SMTPClient({
+      connection: {
+        hostname: smtpHost,
+        port: smtpPort,
+        tls: false,
+        auth: {
+          username: smtpUser,
+          password: "", // No password required
+        },
+      },
     });
 
-    console.log("Email sent successfully:", emailResponse);
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h1 style="color: #C4A84D; border-bottom: 2px solid #C4A84D; padding-bottom: 10px;">
+          New Executive Coaching Request
+        </h1>
+        
+        <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <h3 style="margin-top: 0; color: #333;">Contact Details</h3>
+          <p><strong>Name:</strong> ${name}</p>
+          <p><strong>Email:</strong> <a href="mailto:${email}">${email}</a></p>
+        </div>
+        
+        <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <h3 style="margin-top: 0; color: #333;">Coaching Preferences</h3>
+          <p><strong>Primary Goal:</strong> ${primaryGoal || "Not specified"}</p>
+          <p><strong>Preferred Times:</strong> ${preferredTimes || "Not specified"}</p>
+        </div>
+        
+        ${notes ? `
+        <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <h3 style="margin-top: 0; color: #333;">Additional Notes</h3>
+          <p>${notes}</p>
+        </div>
+        ` : ''}
+        
+        <p style="color: #666; font-size: 12px; margin-top: 30px;">
+          This request was submitted via the Executive Presence Assessment App.
+        </p>
+      </div>
+    `;
 
-    return new Response(JSON.stringify({ success: true, data: emailResponse }), {
+    await client.send({
+      from: smtpUser,
+      to: "info@c2x.co.in",
+      subject: `New Coaching Request from ${name}`,
+      content: "auto",
+      html: htmlContent,
+    });
+
+    await client.close();
+
+    console.log("Email sent successfully via SMTP");
+
+    return new Response(JSON.stringify({ success: true }), {
       status: 200,
       headers: {
         "Content-Type": "application/json",
