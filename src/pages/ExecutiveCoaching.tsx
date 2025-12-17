@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { ArrowLeft, Calendar, Link2, MessageSquare, ExternalLink } from "lucide-react";
+import { ArrowLeft, Calendar, Link2, MessageSquare, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -27,6 +27,7 @@ export default function ExecutiveCoaching() {
   const { user } = useAuth();
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [selectedReport, setSelectedReport] = useState<string>("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -57,18 +58,48 @@ export default function ExecutiveCoaching() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success("Request submitted!", {
-      description: "A coach will reach out to you shortly.",
-    });
-    setFormData({
-      name: "",
-      email: "",
-      primaryGoal: "",
-      preferredTimes: "",
-      notes: "",
-    });
+    
+    if (!formData.name || !formData.email) {
+      toast.error("Please fill in your name and email");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("send-coaching-request", {
+        body: {
+          name: formData.name,
+          email: formData.email,
+          primaryGoal: formData.primaryGoal,
+          preferredTimes: formData.preferredTimes,
+          notes: formData.notes,
+        },
+      });
+
+      if (error) throw error;
+
+      toast.success("Request submitted!", {
+        description: "A coach will reach out to you shortly at " + formData.email,
+      });
+      
+      setFormData({
+        name: "",
+        email: "",
+        primaryGoal: "",
+        preferredTimes: "",
+        notes: "",
+      });
+    } catch (error: any) {
+      console.error("Error sending coaching request:", error);
+      toast.error("Failed to send request", {
+        description: "Please try again or contact support.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleGenerateShareLink = () => {
@@ -116,104 +147,104 @@ export default function ExecutiveCoaching() {
             Executive <span className="text-[#C4A84D]">Coaching</span>
           </h1>
           <p className="text-gray-500 mb-10">
-            Book a session and send your EP report to a coach for targeted feedback.
+            Request a coaching session and share your EP report for targeted feedback.
           </p>
 
-          <div className="grid grid-cols-5 gap-8">
-            {/* Left Column - Book a Session */}
-            <div className="col-span-3 bg-white rounded-2xl border-2 border-[#C4A84D]/30 p-8">
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+            {/* Left Column - Request a Coach */}
+            <div className="lg:col-span-3 bg-white rounded-2xl border-2 border-[#C4A84D]/30 p-8">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-12 h-12 rounded-xl bg-[#C4A84D] flex items-center justify-center">
                   <Calendar className="w-6 h-6 text-white" />
                 </div>
-                <h2 className="text-xl font-bold text-gray-900">Book a Coaching Session</h2>
+                <h2 className="text-xl font-bold text-gray-900">Request a Coaching Session</h2>
               </div>
 
               <p className="text-gray-500 mb-6">
-                Use the booking link (Calendly, etc.) or submit a request form and we'll follow up.
+                Fill out the form below and our coaching team will reach out to schedule your session.
               </p>
 
-              <Button
-                className="bg-[#C4A84D] hover:bg-[#B39940] text-white mb-8"
-                onClick={() => window.open("https://calendly.com", "_blank")}
-              >
-                Open Booking Link
-                <ExternalLink className="w-4 h-4 ml-2" />
-              </Button>
-
-              <div className="border-t border-gray-100 pt-8">
-                <div className="flex items-center gap-2 mb-6">
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="flex items-center gap-2 mb-4">
                   <MessageSquare className="w-5 h-5 text-gray-400" />
-                  <h3 className="font-semibold text-gray-900">Request a Coach (internal)</h3>
+                  <h3 className="font-semibold text-gray-900">Your Details</h3>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div>
-                    <Label htmlFor="name">Name</Label>
-                    <Input
-                      id="name"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="mt-1"
-                    />
-                  </div>
+                <div>
+                  <Label htmlFor="name">Name <span className="text-red-500">*</span></Label>
+                  <Input
+                    id="name"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="mt-1"
+                    required
+                  />
+                </div>
 
-                  <div>
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="mt-1"
-                    />
-                  </div>
+                <div>
+                  <Label htmlFor="email">Email <span className="text-red-500">*</span></Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="mt-1"
+                    required
+                  />
+                </div>
 
-                  <div>
-                    <Label htmlFor="goal">Primary goal</Label>
-                    <Input
-                      id="goal"
-                      placeholder="e.g., gravitas in board meetings"
-                      value={formData.primaryGoal}
-                      onChange={(e) => setFormData({ ...formData, primaryGoal: e.target.value })}
-                      className="mt-1"
-                    />
-                  </div>
+                <div>
+                  <Label htmlFor="goal">Primary goal</Label>
+                  <Input
+                    id="goal"
+                    placeholder="e.g., gravitas in board meetings"
+                    value={formData.primaryGoal}
+                    onChange={(e) => setFormData({ ...formData, primaryGoal: e.target.value })}
+                    className="mt-1"
+                  />
+                </div>
 
-                  <div>
-                    <Label htmlFor="times">Preferred times</Label>
-                    <Input
-                      id="times"
-                      placeholder="e.g., Tue/Thu mornings"
-                      value={formData.preferredTimes}
-                      onChange={(e) => setFormData({ ...formData, preferredTimes: e.target.value })}
-                      className="mt-1"
-                    />
-                  </div>
+                <div>
+                  <Label htmlFor="times">Preferred times</Label>
+                  <Input
+                    id="times"
+                    placeholder="e.g., Tue/Thu mornings"
+                    value={formData.preferredTimes}
+                    onChange={(e) => setFormData({ ...formData, preferredTimes: e.target.value })}
+                    className="mt-1"
+                  />
+                </div>
 
-                  <div>
-                    <Label htmlFor="notes">Notes</Label>
-                    <Textarea
-                      id="notes"
-                      placeholder="Anything the coach should know"
-                      value={formData.notes}
-                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                      className="mt-1"
-                    />
-                  </div>
+                <div>
+                  <Label htmlFor="notes">Notes</Label>
+                  <Textarea
+                    id="notes"
+                    placeholder="Anything the coach should know"
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    className="mt-1"
+                  />
+                </div>
 
-                  <Button
-                    type="submit"
-                    className="w-full bg-[#C4A84D] hover:bg-[#B39940] text-white"
-                  >
-                    Send Request
-                  </Button>
-                </form>
-              </div>
+                <Button
+                  type="submit"
+                  className="w-full bg-[#C4A84D] hover:bg-[#B39940] text-white"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Sending Request...
+                    </>
+                  ) : (
+                    "Send Request"
+                  )}
+                </Button>
+              </form>
             </div>
 
             {/* Right Column - Share Reports */}
-            <div className="col-span-2 bg-white rounded-2xl border border-gray-100 p-8 h-fit">
+            <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 p-8 h-fit">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-12 h-12 rounded-xl bg-[#C4A84D]/10 flex items-center justify-center">
                   <Link2 className="w-6 h-6 text-[#C4A84D]" />
