@@ -44,6 +44,37 @@ serve(async (req) => {
     }
     
     console.log('Authenticated user:', user.id);
+    
+    // Create service role client for database operations (needed for rate limiting check)
+    const supabaseService = createClient(supabaseUrl, supabaseServiceKey);
+    
+    // Rate limiting: max 10 video analyses per hour per user
+    const RATE_LIMIT = 10;
+    const RATE_WINDOW_HOURS = 1;
+    
+    const { data: recentUsage, error: usageError } = await supabaseService
+      .from('api_usage')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('function_name', 'analyze-video')
+      .gte('called_at', new Date(Date.now() - RATE_WINDOW_HOURS * 60 * 60 * 1000).toISOString());
+    
+    if (usageError) {
+      console.error('Rate limit check failed:', usageError.message);
+    } else if (recentUsage && recentUsage.length >= RATE_LIMIT) {
+      console.warn('Rate limit exceeded for user:', user.id);
+      return new Response(JSON.stringify({ 
+        error: `Rate limit exceeded. Maximum ${RATE_LIMIT} video analyses per hour. Please try again later.` 
+      }), {
+        status: 429,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
+    // Record this API call for rate limiting
+    await supabaseService
+      .from('api_usage')
+      .insert({ user_id: user.id, function_name: 'analyze-video' });
 
     const body = await req.json();
     const { assessmentId, videoPath } = body;
@@ -76,8 +107,8 @@ serve(async (req) => {
       });
     }
     
-    // Create service role client for database operations
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    // Use service role client for database operations
+    const supabase = supabaseService;
 
     // Verify the user owns the assessment
     const { data: assessment, error: assessmentError } = await supabase
