@@ -13,7 +13,7 @@ export default function Landing() {
     {
       icon: MessageSquare,
       title: "Communication",
-      percentage: "35%",
+      percentage: "30%",
       description: "Speaking rate, clarity, vocal metrics, filler words",
     },
     {
@@ -25,7 +25,7 @@ export default function Landing() {
     {
       icon: BarChart3,
       title: "Storytelling",
-      percentage: "15%",
+      percentage: "20%",
       description: "Narrative structure, authenticity, concreteness",
     },
   ];
