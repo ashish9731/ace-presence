@@ -1,6 +1,6 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Lightbulb, Play, Video } from "lucide-react";
+import { ArrowLeft, Lightbulb, Play, Video, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -53,7 +53,7 @@ const allDailyTips = [
   },
 ];
 
-// All TED talks pool - rotates every 3 days
+// All TED talks pool with YouTube embed IDs - rotates every 3 days
 const allTedTalks = [
   {
     id: 1,
@@ -62,7 +62,7 @@ const allTedTalks = [
     duration: "21 min",
     description: "Learn how power posing and body language influence confidence and presence",
     tags: ["Presence", "Body Language", "Confidence"],
-    url: "https://www.ted.com/talks/amy_cuddy_your_body_language_may_shape_who_you_are",
+    embedId: "Ks-_Mh1QhMc",
   },
   {
     id: 2,
@@ -71,7 +71,7 @@ const allTedTalks = [
     duration: "18 min",
     description: "Discover the power of starting with 'why' in leadership communication",
     tags: ["Vision Articulation", "Leadership", "Communication"],
-    url: "https://www.ted.com/talks/simon_sinek_how_great_leaders_inspire_action",
+    embedId: "qp0HIF3SfI4",
   },
   {
     id: 3,
@@ -80,7 +80,7 @@ const allTedTalks = [
     duration: "10 min",
     description: "Master vocal techniques for more effective speaking",
     tags: ["Communication", "Vocal Presence", "Clarity"],
-    url: "https://www.ted.com/talks/julian_treasure_how_to_speak_so_that_people_want_to_listen",
+    embedId: "eIho2S0ZahI",
   },
   {
     id: 4,
@@ -89,7 +89,7 @@ const allTedTalks = [
     duration: "20 min",
     description: "Understanding how vulnerability enhances authentic leadership presence",
     tags: ["Gravitas", "Emotional Intelligence", "Authenticity"],
-    url: "https://www.ted.com/talks/brene_brown_the_power_of_vulnerability",
+    embedId: "iCvmsMzlF7o",
   },
   {
     id: 5,
@@ -98,7 +98,7 @@ const allTedTalks = [
     duration: "13 min",
     description: "Building unshakeable self-confidence for executive presence",
     tags: ["Confidence", "Gravitas", "Self-Belief"],
-    url: "https://www.youtube.com/watch?v=w-HYZv6HzAs",
+    embedId: "w-HYZv6HzAs",
   },
   {
     id: 6,
@@ -107,12 +107,13 @@ const allTedTalks = [
     duration: "18 min",
     description: "Understanding what truly motivates people and how leaders can inspire",
     tags: ["Leadership", "Motivation", "Storytelling"],
-    url: "https://www.ted.com/talks/dan_pink_the_puzzle_of_motivation",
+    embedId: "rrkrvAUbU9Y",
   },
 ];
 
 export default function LearningBytes() {
   const navigate = useNavigate();
+  const [playingVideo, setPlayingVideo] = useState<string | null>(null);
 
   // Calculate which content to show based on date (rotates every 3 days)
   const { currentTip, currentTalks } = useMemo(() => {
@@ -193,29 +194,69 @@ export default function LearningBytes() {
             {currentTalks.map((talk) => (
               <div
                 key={talk.id}
-                className="bg-white rounded-2xl border border-gray-100 p-6 hover:border-[#C4A84D]/50 transition-all"
+                className="bg-white rounded-2xl border border-gray-100 overflow-hidden hover:border-[#C4A84D]/50 transition-all"
               >
-                <div className="flex items-center gap-2 text-sm text-[#C4A84D] mb-2">
-                  <Video className="w-4 h-4" />
-                  <span>{talk.duration}</span>
+                {/* Video Player */}
+                {playingVideo === talk.embedId ? (
+                  <div className="relative">
+                    <div className="aspect-video">
+                      <iframe
+                        src={`https://www.youtube.com/embed/${talk.embedId}?autoplay=1&rel=0`}
+                        title={talk.title}
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                        className="w-full h-full"
+                      />
+                    </div>
+                    <button
+                      onClick={() => setPlayingVideo(null)}
+                      className="absolute top-3 right-3 bg-black/70 hover:bg-black text-white p-2 rounded-full transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div 
+                    className="relative cursor-pointer group"
+                    onClick={() => setPlayingVideo(talk.embedId)}
+                  >
+                    <img
+                      src={`https://img.youtube.com/vi/${talk.embedId}/maxresdefault.jpg`}
+                      alt={talk.title}
+                      className="w-full aspect-video object-cover"
+                      onError={(e) => {
+                        // Fallback to hqdefault if maxresdefault doesn't exist
+                        (e.target as HTMLImageElement).src = `https://img.youtube.com/vi/${talk.embedId}/hqdefault.jpg`;
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center group-hover:bg-black/50 transition-colors">
+                      <div className="w-16 h-16 rounded-full bg-[#C4A84D] flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <Play className="w-8 h-8 text-white ml-1" />
+                      </div>
+                    </div>
+                    <div className="absolute bottom-3 right-3 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                      {talk.duration}
+                    </div>
+                  </div>
+                )}
+
+                {/* Video Info */}
+                <div className="p-6">
+                  <div className="flex items-center gap-2 text-sm text-[#C4A84D] mb-2">
+                    <Video className="w-4 h-4" />
+                    <span>{talk.duration}</span>
+                  </div>
+                  <h3 className="text-lg font-bold text-gray-900 mb-1">{talk.title}</h3>
+                  <p className="text-sm text-[#C4A84D] mb-3">by {talk.speaker}</p>
+                  <p className="text-sm text-gray-500 mb-4">{talk.description}</p>
+                  <div className="flex items-center gap-2">
+                    {talk.tags.map((tag) => (
+                      <Badge key={tag} variant="outline" className="text-xs border-gray-200">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
                 </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-1">{talk.title}</h3>
-                <p className="text-sm text-[#C4A84D] mb-3">by {talk.speaker}</p>
-                <p className="text-sm text-gray-500 mb-4">{talk.description}</p>
-                <div className="flex items-center gap-2 mb-4">
-                  {talk.tags.map((tag) => (
-                    <Badge key={tag} variant="outline" className="text-xs border-gray-200">
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
-                <Button
-                  className="w-full bg-[#C4A84D] hover:bg-[#B39940] text-white"
-                  onClick={() => window.open(talk.url, "_blank")}
-                >
-                  <Play className="w-4 h-4 mr-2" />
-                  Watch Video
-                </Button>
               </div>
             ))}
           </div>
