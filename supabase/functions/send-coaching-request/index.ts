@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -35,32 +35,47 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    console.log("Saving coaching request for:", name, email);
+    console.log("Sending coaching request email for:", name, email);
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const smtpHost = Deno.env.get("SMTP_HOST") || "smtp.gmail.com";
+    const smtpPort = parseInt(Deno.env.get("SMTP_PORT") || "587");
+    const smtpUser = Deno.env.get("SMTP_USER")!;
+    const smtpPass = Deno.env.get("SMTP_PASS")!;
 
-    const { data, error } = await supabase
-      .from("coaching_requests")
-      .insert({
-        name,
-        email,
-        primary_goal: primaryGoal || null,
-        preferred_times: preferredTimes || null,
-        notes: notes || null,
-      })
-      .select()
-      .single();
+    const client = new SMTPClient({
+      connection: {
+        hostname: smtpHost,
+        port: smtpPort,
+        tls: false,
+        auth: {
+          username: smtpUser,
+          password: smtpPass,
+        },
+      },
+    });
 
-    if (error) {
-      console.error("Database error:", error);
-      throw new Error(error.message);
-    }
+    const emailContent = `
+      <h2>New Executive Coaching Request</h2>
+      <p><strong>Name:</strong> ${name}</p>
+      <p><strong>Email:</strong> ${email}</p>
+      <p><strong>Primary Goal:</strong> ${primaryGoal || "Not specified"}</p>
+      <p><strong>Preferred Times:</strong> ${preferredTimes || "Not specified"}</p>
+      <p><strong>Additional Notes:</strong> ${notes || "None"}</p>
+    `;
 
-    console.log("Coaching request saved successfully:", data.id);
+    await client.send({
+      from: smtpUser,
+      to: "info@c2x.co.in",
+      subject: `Executive Coaching Request from ${name}`,
+      content: "New coaching request received",
+      html: emailContent,
+    });
 
-    return new Response(JSON.stringify({ success: true, id: data.id }), {
+    await client.close();
+
+    console.log("Email sent successfully");
+
+    return new Response(JSON.stringify({ success: true }), {
       status: 200,
       headers: {
         "Content-Type": "application/json",
