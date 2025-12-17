@@ -95,6 +95,39 @@ export type Database = {
         }
         Relationships: []
       }
+      coaching_requests: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          name: string
+          notes: string | null
+          preferred_times: string | null
+          primary_goal: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          name: string
+          notes?: string | null
+          preferred_times?: string | null
+          primary_goal?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          preferred_times?: string | null
+          primary_goal?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       user_plans: {
         Row: {
           id: string
