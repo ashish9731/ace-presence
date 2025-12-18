@@ -103,9 +103,9 @@ const handler = async (req: Request): Promise<Response> => {
     const { name, email, primaryGoal, preferredTimes, notes }: CoachingRequest = await req.json();
 
     // Validate required fields
-    if (!name || !email) {
+    if (!name || typeof name !== 'string' || !name.trim()) {
       return new Response(
-        JSON.stringify({ error: "Name and email are required" }),
+        JSON.stringify({ error: "Name is required" }),
         {
           status: 400,
           headers: { "Content-Type": "application/json", ...corsHeaders },
@@ -113,10 +113,78 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Validate input lengths
-    if (name.length > 100 || email.length > 255) {
+    if (!email || typeof email !== 'string' || !email.trim()) {
       return new Response(
-        JSON.stringify({ error: "Input too long" }),
+        JSON.stringify({ error: "Email is required" }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
+    }
+
+    // Validate email format
+    const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+    if (!emailRegex.test(email.trim())) {
+      return new Response(
+        JSON.stringify({ error: "Invalid email format" }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
+    }
+
+    // Validate input lengths for all fields
+    const trimmedName = name.trim();
+    const trimmedEmail = email.trim();
+    const trimmedGoal = primaryGoal?.trim() || '';
+    const trimmedTimes = preferredTimes?.trim() || '';
+    const trimmedNotes = notes?.trim() || '';
+
+    if (trimmedName.length > 100) {
+      return new Response(
+        JSON.stringify({ error: "Name must be 100 characters or less" }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
+    }
+
+    if (trimmedEmail.length > 255) {
+      return new Response(
+        JSON.stringify({ error: "Email must be 255 characters or less" }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
+    }
+
+    if (trimmedGoal.length > 500) {
+      return new Response(
+        JSON.stringify({ error: "Primary goal must be 500 characters or less" }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
+    }
+
+    if (trimmedTimes.length > 200) {
+      return new Response(
+        JSON.stringify({ error: "Preferred times must be 200 characters or less" }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
+    }
+
+    if (trimmedNotes.length > 1000) {
+      return new Response(
+        JSON.stringify({ error: "Notes must be 1000 characters or less" }),
         {
           status: 400,
           headers: { "Content-Type": "application/json", ...corsHeaders },
