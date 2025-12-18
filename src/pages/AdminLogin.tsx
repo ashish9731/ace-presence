@@ -12,7 +12,6 @@ export default function AdminLogin() {
   const navigate = useNavigate();
   const { user, isAdmin, isLoading: authLoading } = useAdminAuth();
   const [isLoading, setIsLoading] = useState(false);
-  const [isSignup, setIsSignup] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -27,26 +26,6 @@ export default function AdminLogin() {
     setIsLoading(true);
 
     try {
-      if (isSignup) {
-        // First-time admin signup
-        const { error: signupError } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/admin/dashboard`,
-          },
-        });
-        
-        if (signupError) throw signupError;
-        
-        toast.success("Admin account created!", {
-          description: "You can now sign in.",
-        });
-        setIsSignup(false);
-        return;
-      }
-
-      // Sign in
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -74,12 +53,8 @@ export default function AdminLogin() {
         navigate("/admin/dashboard", { replace: true });
       }
     } catch (error: any) {
-      let message = error.message;
-      if (message.includes("Invalid login credentials")) {
-        message = "Invalid email or password. If this is your first time, click 'Create Admin Account' first.";
-      }
-      toast.error(isSignup ? "Signup failed" : "Login failed", {
-        description: message,
+      toast.error("Login failed", {
+        description: error.message,
       });
     } finally {
       setIsLoading(false);
@@ -112,19 +87,9 @@ export default function AdminLogin() {
             </div>
             <div>
               <h1 className="font-display text-2xl font-bold text-foreground">Admin Portal</h1>
-              <p className="text-sm text-muted-foreground">
-                {isSignup ? "Create your admin account" : "Secure access only"}
-              </p>
+              <p className="text-sm text-muted-foreground">Secure access only</p>
             </div>
           </div>
-
-          {!isSignup && (
-            <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-              <p className="text-sm text-amber-800">
-                <strong>First time?</strong> Create your admin account first using the button below.
-              </p>
-            </div>
-          )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
@@ -132,7 +97,7 @@ export default function AdminLogin() {
               <Input
                 id="email"
                 type="email"
-                placeholder="ankur@c2x.co.in"
+                placeholder="admin@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="py-5"
@@ -164,25 +129,13 @@ export default function AdminLogin() {
               {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  {isSignup ? "Creating account..." : "Signing in..."}
+                  Signing in...
                 </>
               ) : (
-                isSignup ? "Create Admin Account" : "Sign In to Admin"
+                "Sign In to Admin"
               )}
             </Button>
           </form>
-
-          <div className="text-center mt-4">
-            <button
-              type="button"
-              onClick={() => setIsSignup(!isSignup)}
-              className="text-sm font-medium transition-colors"
-              style={{ color: 'hsl(38 92% 40%)' }}
-              disabled={isLoading}
-            >
-              {isSignup ? "Already have an account? Sign in" : "First time? Create Admin Account"}
-            </button>
-          </div>
         </div>
       </div>
     </div>
