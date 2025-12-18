@@ -805,20 +805,21 @@ CRITICAL: Include the full metrics objects in your response. All observations mu
       }
     }
 
-    // Calculate weighted overall score (Gravitas: 25%, Communication: 30%, Appearance: 25%, Storytelling: 20%)
+    // Calculate weighted overall score (Gravitas: 60%, Communication: 25%, Appearance: 5%, Storytelling: 10%)
+    // Based on market research - Gravitas is the primary driver of executive presence
     const gravitasScore = analysis.gravitas?.overall_score || 70;
     const communicationScore = analysis.communication.overall_score;
     const appearanceScore = analysis.appearance_nonverbal.overall_score;
     const storytellingScore = analysis.storytelling.overall_score;
     
     const overallScore = Math.round(
-      (gravitasScore * 0.25) +
-      (communicationScore * 0.30) + 
-      (appearanceScore * 0.25) + 
-      (storytellingScore * 0.20)
+      (gravitasScore * 0.60) +
+      (communicationScore * 0.25) + 
+      (appearanceScore * 0.05) + 
+      (storytellingScore * 0.10)
     );
 
-    console.log('Final scores - Overall:', overallScore, 'Gravitas:', gravitasScore, 'Comm:', communicationScore, 'App:', appearanceScore, 'Story:', storytellingScore);
+    console.log('Final scores - Overall:', overallScore, 'Gravitas(60%):', gravitasScore, 'Comm(25%):', communicationScore, 'App(5%):', appearanceScore, 'Story(10%):', storytellingScore);
 
     // Update assessment with results
     const { error: updateError } = await supabase

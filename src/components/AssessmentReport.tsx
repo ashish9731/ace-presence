@@ -147,6 +147,7 @@ interface Assessment {
 interface AssessmentReportProps {
   assessment: Assessment;
   onNewAssessment: () => void;
+  canDownload?: boolean;
 }
 
 const bucketIcons = {
@@ -1631,7 +1632,7 @@ function generatePDF(assessment: Assessment) {
   doc.setFontSize(8);
   doc.setTextColor(60, 60, 60);
   doc.text("85-100: Exceptional | 70-84: Strong | 55-69: Developing | Below 55: Needs Focus", 20, yPos + 22);
-  doc.text("Weighted: Gravitas 25% | Communication 30% | Appearance 25% | Storytelling 20%", 20, yPos + 30);
+  doc.text("Weighted: Gravitas 60% | Communication 25% | Appearance 5% | Storytelling 10%", 20, yPos + 30);
   
   yPos += 50;
   
@@ -1659,7 +1660,7 @@ function generatePDF(assessment: Assessment) {
   toast.success("Comprehensive PDF report downloaded!");
 }
 
-export function AssessmentReport({ assessment, onNewAssessment }: AssessmentReportProps) {
+export function AssessmentReport({ assessment, onNewAssessment, canDownload = true }: AssessmentReportProps) {
   const [showTranscript, setShowTranscript] = useState(false);
 
   const storytellingData = assessment.storytelling_analysis as StorytellingData;
@@ -1747,28 +1748,28 @@ export function AssessmentReport({ assessment, onNewAssessment }: AssessmentRepo
                   {Math.round(gravitasScore)}
                 </div>
                 <div className="text-xs text-muted-foreground">Gravitas</div>
-                <div className="text-xs text-muted-foreground/70">25%</div>
+                <div className="text-xs text-muted-foreground/70">60%</div>
               </div>
               <div className="text-center">
                 <div className="text-xl font-display font-bold text-foreground">
                   {Math.round(assessment.communication_score)}
                 </div>
                 <div className="text-xs text-muted-foreground">Communication</div>
-                <div className="text-xs text-muted-foreground/70">30%</div>
+                <div className="text-xs text-muted-foreground/70">25%</div>
               </div>
               <div className="text-center">
                 <div className="text-xl font-display font-bold text-foreground">
                   {Math.round(assessment.appearance_score)}
                 </div>
                 <div className="text-xs text-muted-foreground">Appearance</div>
-                <div className="text-xs text-muted-foreground/70">25%</div>
+                <div className="text-xs text-muted-foreground/70">5%</div>
               </div>
               <div className="text-center">
                 <div className="text-xl font-display font-bold text-foreground">
                   {Math.round(assessment.storytelling_score)}
                 </div>
                 <div className="text-xs text-muted-foreground">Storytelling</div>
-                <div className="text-xs text-muted-foreground/70">20%</div>
+                <div className="text-xs text-muted-foreground/70">10%</div>
               </div>
             </div>
           </div>
@@ -1784,7 +1785,7 @@ export function AssessmentReport({ assessment, onNewAssessment }: AssessmentRepo
             color={bucketColors.gravitas}
             score={gravitasScore}
             data={gravitasData}
-            weight="25%"
+            weight="60%"
           />
         )}
         
@@ -1794,7 +1795,7 @@ export function AssessmentReport({ assessment, onNewAssessment }: AssessmentRepo
           color={bucketColors.communication}
           score={assessment.communication_score}
           data={assessment.communication_analysis}
-          weight="30%"
+          weight="25%"
         />
         
         <BucketSection
@@ -1803,7 +1804,7 @@ export function AssessmentReport({ assessment, onNewAssessment }: AssessmentRepo
           color={bucketColors.appearance}
           score={assessment.appearance_score}
           data={assessment.appearance_analysis}
-          weight="25%"
+          weight="5%"
         />
         
         <BucketSection
@@ -1812,7 +1813,7 @@ export function AssessmentReport({ assessment, onNewAssessment }: AssessmentRepo
           color={bucketColors.storytelling}
           score={assessment.storytelling_score}
           data={assessment.storytelling_analysis}
-          weight="20%"
+          weight="10%"
         />
       </div>
 
@@ -1853,14 +1854,25 @@ export function AssessmentReport({ assessment, onNewAssessment }: AssessmentRepo
       </div>
 
       <div className="flex flex-col sm:flex-row justify-center gap-4 pt-4">
-        <Button
-          onClick={() => generatePDF(assessment)}
-          variant="outline"
-          className="h-12 px-8 flex items-center gap-2"
-        >
-          <Download className="w-4 h-4" />
-          Download PDF Report
-        </Button>
+        {canDownload ? (
+          <Button
+            onClick={() => generatePDF(assessment)}
+            variant="outline"
+            className="h-12 px-8 flex items-center gap-2"
+          >
+            <Download className="w-4 h-4" />
+            Download PDF Report
+          </Button>
+        ) : (
+          <Button
+            variant="outline"
+            className="h-12 px-8 flex items-center gap-2 opacity-50 cursor-not-allowed"
+            disabled
+          >
+            <Download className="w-4 h-4" />
+            Upgrade to Download PDF
+          </Button>
+        )}
         <Button
           onClick={onNewAssessment}
           className="h-12 px-8"
