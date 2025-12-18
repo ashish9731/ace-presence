@@ -128,26 +128,109 @@ export type Database = {
         }
         Relationships: []
       }
+      payments: {
+        Row: {
+          admin_notes: string | null
+          amount: number
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          currency: string
+          id: string
+          payment_method: string
+          plan_name: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          amount: number
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          currency?: string
+          id?: string
+          payment_method?: string
+          plan_name: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          admin_notes?: string | null
+          amount?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          currency?: string
+          id?: string
+          payment_method?: string
+          plan_name?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_plans: {
         Row: {
           id: string
+          is_active: boolean
           plan_name: string
           selected_at: string
+          trial_ends_at: string | null
+          trial_started_at: string | null
           user_id: string
         }
         Insert: {
           id?: string
+          is_active?: boolean
           plan_name: string
           selected_at?: string
+          trial_ends_at?: string | null
+          trial_started_at?: string | null
           user_id: string
         }
         Update: {
           id?: string
+          is_active?: boolean
           plan_name?: string
           selected_at?: string
+          trial_ends_at?: string | null
+          trial_started_at?: string | null
           user_id?: string
         }
         Relationships: []
+      }
+      video_usage: {
+        Row: {
+          assessment_id: string | null
+          created_at: string
+          id: string
+          month_year: string
+          user_id: string
+        }
+        Insert: {
+          assessment_id?: string | null
+          created_at?: string
+          id?: string
+          month_year: string
+          user_id: string
+        }
+        Update: {
+          assessment_id?: string | null
+          created_at?: string
+          id?: string
+          month_year?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_usage_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "assessments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

@@ -1,12 +1,15 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Clock, User, Target, Film, Camera, Upload } from "lucide-react";
+import { ArrowLeft, Clock, User, Target, Film, Camera, Upload, Lock } from "lucide-react";
 import { VideoRecorder } from "@/components/VideoRecorder";
 import { VideoUpload } from "@/components/VideoUpload";
 import { AnalysisProgress } from "@/components/AnalysisProgress";
 import { AssessmentReport } from "@/components/AssessmentReport";
+import { UpgradePrompt } from "@/components/UpgradePrompt";
+import { ReportProtection } from "@/components/ReportProtection";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useTierEnforcement } from "@/hooks/useTierEnforcement";
 import { toast } from "sonner";
 
 type ViewState = "select" | "record" | "upload" | "analyzing" | "report";
@@ -28,6 +31,16 @@ interface Assessment {
 export default function KnowYourEP() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { 
+    userPlan, 
+    isTrialExpired, 
+    canUseVideoAnalysis, 
+    videoUsageThisMonth,
+    limits,
+    loading: tierLoading,
+    recordVideoUsage 
+  } = useTierEnforcement();
+  
   const [mode, setMode] = useState<ViewState>("select");
   const [isUploading, setIsUploading] = useState(false);
   const [analysisStatus, setAnalysisStatus] = useState("uploading");
@@ -56,6 +69,10 @@ export default function KnowYourEP() {
         if (data.status === "completed") {
           clearInterval(pollInterval);
           setAssessment(data as Assessment);
+          
+          // Record video usage
+          await recordVideoUsage(data.id);
+          
           setMode("report");
           toast.success("Analysis complete!", {
             description: "Your Executive Presence report is ready.",
@@ -71,11 +88,22 @@ export default function KnowYourEP() {
     }, 3000);
 
     return () => clearInterval(pollInterval);
-  }, [assessmentId, mode]);
+  }, [assessmentId, mode, recordVideoUsage]);
 
   const processVideo = async (file: File) => {
     if (!user) {
       toast.error("Authentication required");
+      return;
+    }
+
+    // Check tier limits
+    if (!canUseVideoAnalysis) {
+      toast.error("Video analysis limit reached", {
+        description: isTrialExpired 
+          ? "Your free trial has expired. Please upgrade to continue."
+          : `You've used ${videoUsageThisMonth}/${limits.videoAnalyses} analyses this month. Upgrade for more.`,
+      });
+      navigate("/pricing");
       return;
     }
 
@@ -179,6 +207,58 @@ export default function KnowYourEP() {
     setMode("select");
   };
 
+  // Show upgrade prompt if trial expired or no plan
+  if (!tierLoading && (isTrialExpired || !userPlan)) {
+    return (
+      <div className="min-h-screen bg-[#FAFAFA]">
+        <div className="border-b border-gray-100 bg-white">
+          <div className="container mx-auto px-6 py-4">
+            <button
+              onClick={() => navigate("/dashboard")}
+              className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to Dashboard
+            </button>
+          </div>
+        </div>
+        <main className="container mx-auto px-6 py-12">
+          <UpgradePrompt 
+            isTrialExpired={isTrialExpired}
+            feature="Video Analysis"
+            message={!userPlan ? "Please select a plan to use this feature." : undefined}
+          />
+        </main>
+      </div>
+    );
+  }
+
+  // Show limit reached message
+  if (!tierLoading && !canUseVideoAnalysis) {
+    return (
+      <div className="min-h-screen bg-[#FAFAFA]">
+        <div className="border-b border-gray-100 bg-white">
+          <div className="container mx-auto px-6 py-4">
+            <button
+              onClick={() => navigate("/dashboard")}
+              className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to Dashboard
+            </button>
+          </div>
+        </div>
+        <main className="container mx-auto px-6 py-12">
+          <UpgradePrompt 
+            title="Analysis Limit Reached"
+            message={`You've used ${videoUsageThisMonth} of ${limits.videoAnalyses} video analyses this month. Upgrade your plan for more analyses.`}
+            feature="Video Analysis"
+          />
+        </main>
+      </div>
+    );
+  }
+
   if (mode === "record") {
     return (
       <div className="min-h-screen bg-[#FAFAFA]">
@@ -243,6 +323,8 @@ export default function KnowYourEP() {
   }
 
   if (mode === "report" && assessment) {
+    const isFreeTier = userPlan === "free_trial";
+    
     return (
       <div className="min-h-screen bg-[#FAFAFA]">
         <div className="border-b border-gray-100 bg-white">
@@ -254,19 +336,30 @@ export default function KnowYourEP() {
               <ArrowLeft className="w-4 h-4" />
               Back to Dashboard
             </button>
-            <button
-              onClick={handleNewAssessment}
-              className="text-sm text-[#C4A84D] hover:text-[#B39940] transition-colors font-medium"
-            >
-              New Assessment
-            </button>
+            <div className="flex items-center gap-4">
+              {isFreeTier && (
+                <span className="text-xs text-amber-600 bg-amber-50 px-3 py-1 rounded-full flex items-center gap-1">
+                  <Lock className="w-3 h-3" />
+                  Preview Only - Upgrade to Download
+                </span>
+              )}
+              <button
+                onClick={handleNewAssessment}
+                className="text-sm text-[#C4A84D] hover:text-[#B39940] transition-colors font-medium"
+              >
+                New Assessment
+              </button>
+            </div>
           </div>
         </div>
         <main className="container mx-auto px-6 py-8">
-          <AssessmentReport
-            assessment={assessment}
-            onNewAssessment={handleNewAssessment}
-          />
+          <ReportProtection isProtected={isFreeTier}>
+            <AssessmentReport
+              assessment={assessment}
+              onNewAssessment={handleNewAssessment}
+              canDownload={!isFreeTier}
+            />
+          </ReportProtection>
         </main>
       </div>
     );
@@ -276,7 +369,7 @@ export default function KnowYourEP() {
     <div className="min-h-screen bg-[#FAFAFA]">
       {/* Back Button */}
       <div className="border-b border-gray-100 bg-white">
-        <div className="container mx-auto px-6 py-4">
+        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
           <button
             onClick={() => navigate("/dashboard")}
             className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
@@ -284,6 +377,14 @@ export default function KnowYourEP() {
             <ArrowLeft className="w-4 h-4" />
             Back to Dashboard
           </button>
+          
+          {/* Usage indicator */}
+          {userPlan && limits.videoAnalyses !== Infinity && (
+            <div className="text-sm text-gray-500">
+              <span className="font-medium text-[#C4A84D]">{videoUsageThisMonth}</span>
+              <span> / {limits.videoAnalyses} analyses used this month</span>
+            </div>
+          )}
         </div>
       </div>
 
