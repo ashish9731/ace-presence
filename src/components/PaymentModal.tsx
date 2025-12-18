@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Loader2, CreditCard, Smartphone, CheckCircle2, Clock, Sparkles, PartyPopper } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import gpayQrImage from "@/assets/gpay-qr.png";
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -216,7 +215,7 @@ export function PaymentModal({
                   
                   <div className="bg-white border-4 border-[#C4A84D]/20 rounded-2xl p-6 inline-block shadow-xl hover:shadow-2xl transition-shadow">
                     <img
-                      src={gpayQrImage}
+                      src="/gpay-qr.png"
                       alt="Google Pay QR Code"
                       className="w-56 h-56 mx-auto object-contain"
                     />
