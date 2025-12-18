@@ -17,6 +17,8 @@ import Training from "./pages/Training";
 import ExecutiveCoaching from "./pages/ExecutiveCoaching";
 import Report from "./pages/Report";
 import Reports from "./pages/Reports";
+import AdminLogin from "./pages/AdminLogin";
+import AdminDashboard from "./pages/AdminDashboard";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
@@ -49,6 +51,8 @@ const App = () => (
           <Route path="/" element={<Landing />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/auth" element={<Auth />} />
+          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
           <Route path="/dashboard" element={
             <ProtectedRoute>
               <Dashboard />
