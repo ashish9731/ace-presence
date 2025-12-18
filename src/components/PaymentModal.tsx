@@ -221,7 +221,13 @@ export function PaymentModal({
                     />
                   </div>
 
-                  <div className="mt-5 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-xl p-4">
+                  <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-xs text-blue-700 font-medium">
+                      💡 Payment will show as: "Executive Presence Tool - {planName} Plan"
+                    </p>
+                  </div>
+
+                  <div className="mt-4 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-xl p-4">
                     <div className="flex items-center justify-center gap-2 text-amber-700">
                       <Clock className="w-5 h-5" />
                       <span className="font-medium">After payment, click confirm below</span>
