@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Check, X, ArrowLeft, Loader2, Zap, CheckCircle, Crown, Building2 } from "lucide-react";
+import { Check, X, ArrowLeft, Loader2, Zap, CheckCircle, Crown, Building2, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { PaymentModal } from "@/components/PaymentModal";
 
 const planFeatures = {
   free_trial: {
@@ -12,12 +13,13 @@ const planFeatures = {
     subtitle: "2-day trial to explore",
     price: "$0",
     yearlyPrice: "$0",
+    testPrice: 0,
     period: "/mo",
     icon: Zap,
     iconBg: "bg-gray-100",
     iconColor: "text-gray-600",
     features: [
-      { text: "1 video analysis", included: true },
+      { text: "2 video analyses", included: true },
       { text: "2 simulator scenarios", included: true },
       { text: "2 learning bytes", included: true },
       { text: "Report preview only", included: true },
@@ -29,12 +31,14 @@ const planFeatures = {
     ],
     cta: "Start Free Trial",
     popular: false,
+    requiresPayment: false,
   },
   basic: {
     name: "Basic",
     subtitle: "Essential tools for growth",
     price: "$25",
     yearlyPrice: "$275",
+    testPrice: 1, // $1 for testing
     period: "/mo",
     icon: CheckCircle,
     iconBg: "bg-[#C4A84D]/10",
@@ -51,12 +55,14 @@ const planFeatures = {
     ],
     cta: "Upgrade Now",
     popular: false,
+    requiresPayment: true,
   },
   pro: {
     name: "Pro",
     subtitle: "Complete executive presence mastery",
     price: "$80",
     yearlyPrice: "$850",
+    testPrice: 80,
     period: "/mo",
     icon: Crown,
     iconBg: "bg-[#C4A84D]/10",
@@ -74,12 +80,14 @@ const planFeatures = {
     ],
     cta: "Upgrade Now",
     popular: true,
+    requiresPayment: true,
   },
   enterprise: {
     name: "Enterprise",
     subtitle: "Custom solutions for teams",
     price: "Custom",
     yearlyPrice: "Custom",
+    testPrice: 0,
     period: "",
     icon: Building2,
     iconBg: "bg-gray-100",
@@ -96,6 +104,7 @@ const planFeatures = {
     ],
     cta: "Contact Sales",
     popular: false,
+    requiresPayment: false,
   },
 };
 
@@ -105,9 +114,14 @@ export default function Pricing() {
   const [selectingPlan, setSelectingPlan] = useState<string | null>(null);
   const [existingPlan, setExistingPlan] = useState<string | null>(null);
   const [billingPeriod, setBillingPeriod] = useState<"monthly" | "yearly">("monthly");
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [selectedPlanForPayment, setSelectedPlanForPayment] = useState<string | null>(null);
+  const [pendingPayments, setPendingPayments] = useState<string[]>([]);
+  const [trialExpired, setTrialExpired] = useState(false);
 
   useEffect(() => {
     checkExistingPlan();
+    checkPendingPayments();
   }, [user]);
 
   const checkExistingPlan = async () => {
@@ -115,12 +129,32 @@ export default function Pricing() {
     
     const { data } = await supabase
       .from("user_plans")
-      .select("plan_name")
+      .select("plan_name, trial_started_at, trial_ends_at, is_active")
       .eq("user_id", user.id)
       .maybeSingle();
     
     if (data?.plan_name) {
       setExistingPlan(data.plan_name);
+      
+      // Check if trial has expired
+      if (data.plan_name === "free_trial" && data.trial_ends_at) {
+        const expired = new Date() > new Date(data.trial_ends_at);
+        setTrialExpired(expired);
+      }
+    }
+  };
+
+  const checkPendingPayments = async () => {
+    if (!user) return;
+
+    const { data } = await supabase
+      .from("payments")
+      .select("plan_name")
+      .eq("user_id", user.id)
+      .eq("status", "pending");
+
+    if (data) {
+      setPendingPayments(data.map(p => p.plan_name));
     }
   };
 
@@ -135,6 +169,23 @@ export default function Pricing() {
       return;
     }
 
+    const plan = planFeatures[planKey as keyof typeof planFeatures];
+
+    // If paid plan and user doesn't already have it approved, show payment modal
+    if (plan.requiresPayment && existingPlan !== planKey) {
+      // Check if there's already a pending payment for this plan
+      if (pendingPayments.includes(planKey)) {
+        toast.info("Payment pending approval", {
+          description: "Your payment for this plan is being reviewed by admin.",
+        });
+        return;
+      }
+      
+      setSelectedPlanForPayment(planKey);
+      setPaymentModalOpen(true);
+      return;
+    }
+
     // Prevent selecting free_trial if user already has any plan
     if (planKey === "free_trial" && existingPlan) {
       toast.error("Free trial already used", { 
@@ -143,34 +194,42 @@ export default function Pricing() {
       return;
     }
 
-    // Prevent downgrading to free_trial from a paid plan
-    if (planKey === "free_trial" && existingPlan && existingPlan !== "free_trial") {
-      toast.error("Cannot downgrade to free trial");
-      return;
-    }
-
     setSelectingPlan(planKey);
     
     try {
+      // Calculate trial end date (2 days from now)
+      const trialEndsAt = new Date();
+      trialEndsAt.setDate(trialEndsAt.getDate() + 2);
+
       if (existingPlan) {
         // User already has a plan - update it (upgrade)
         const { error } = await supabase
           .from("user_plans")
-          .update({ plan_name: planKey, selected_at: new Date().toISOString() })
+          .update({ 
+            plan_name: planKey, 
+            selected_at: new Date().toISOString(),
+            is_active: true,
+          })
           .eq("user_id", user.id);
 
         if (error) throw error;
         
-        toast.success(`Upgraded to ${planFeatures[planKey as keyof typeof planFeatures].name} plan!`);
+        toast.success(`Upgraded to ${plan.name} plan!`);
       } else {
-        // New user - insert plan
+        // New user - insert plan with trial dates
         const { error } = await supabase
           .from("user_plans")
-          .insert({ user_id: user.id, plan_name: planKey });
+          .insert({ 
+            user_id: user.id, 
+            plan_name: planKey,
+            trial_started_at: planKey === "free_trial" ? new Date().toISOString() : null,
+            trial_ends_at: planKey === "free_trial" ? trialEndsAt.toISOString() : null,
+            is_active: true,
+          });
 
         if (error) throw error;
         
-        toast.success(`${planFeatures[planKey as keyof typeof planFeatures].name} plan activated!`);
+        toast.success(`${plan.name} plan activated!`);
       }
       
       navigate("/dashboard");
@@ -179,6 +238,32 @@ export default function Pricing() {
     } finally {
       setSelectingPlan(null);
     }
+  };
+
+  const handlePaymentSubmitted = () => {
+    checkPendingPayments();
+    toast.info("Payment submitted", {
+      description: "Your plan will be activated once admin approves the payment.",
+    });
+  };
+
+  const getButtonText = (key: string) => {
+    const plan = planFeatures[key as keyof typeof planFeatures];
+    
+    if (existingPlan === key) return "Current Plan";
+    if (pendingPayments.includes(key)) return "Pending Approval";
+    if (key === "free_trial" && existingPlan) return "Trial Used";
+    if (existingPlan && key !== "free_trial" && plan.requiresPayment) return "Upgrade";
+    
+    return plan.cta;
+  };
+
+  const isButtonDisabled = (key: string) => {
+    if (selectingPlan !== null) return true;
+    if (existingPlan === key) return true;
+    if (pendingPayments.includes(key)) return true;
+    if (key === "free_trial" && !!existingPlan) return true;
+    return false;
   };
 
   if (authLoading) {
@@ -230,6 +315,30 @@ export default function Pricing() {
         </div>
       </header>
 
+      {/* Trial Expired Banner */}
+      {trialExpired && (
+        <div className="bg-amber-50 border-b border-amber-200">
+          <div className="container mx-auto px-4 py-3 flex items-center justify-center gap-2 text-amber-700">
+            <Clock className="w-4 h-4" />
+            <span className="text-sm font-medium">
+              Your free trial has expired. Upgrade to continue using all features.
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Pending Payment Banner */}
+      {pendingPayments.length > 0 && (
+        <div className="bg-blue-50 border-b border-blue-200">
+          <div className="container mx-auto px-4 py-3 flex items-center justify-center gap-2 text-blue-700">
+            <Clock className="w-4 h-4" />
+            <span className="text-sm font-medium">
+              Payment pending approval. Your plan will be activated once confirmed by admin.
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Pricing Section */}
       <section className="py-16">
         <div className="container mx-auto px-4">
@@ -275,6 +384,8 @@ export default function Pricing() {
           <div className="grid md:grid-cols-4 gap-6 max-w-6xl mx-auto">
             {Object.entries(planFeatures).map(([key, plan]) => {
               const Icon = plan.icon;
+              const hasPendingPayment = pendingPayments.includes(key);
+              
               return (
                 <div
                   key={key}
@@ -282,11 +393,17 @@ export default function Pricing() {
                     plan.popular
                       ? "border-2 border-[#C4A84D] shadow-lg"
                       : "border border-gray-200"
-                  }`}
+                  } ${hasPendingPayment ? "ring-2 ring-blue-300" : ""}`}
                 >
                   {plan.popular && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 text-xs font-semibold rounded-full bg-[#C4A84D] text-white uppercase tracking-wide">
                       Most Popular
+                    </div>
+                  )}
+
+                  {hasPendingPayment && (
+                    <div className="absolute -top-3 right-4 px-3 py-1 text-xs font-semibold rounded-full bg-blue-500 text-white">
+                      Pending
                     </div>
                   )}
 
@@ -313,6 +430,15 @@ export default function Pricing() {
                     )}
                   </div>
 
+                  {/* Test Price Notice for Basic */}
+                  {key === "basic" && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-2 mb-4 text-center">
+                      <span className="text-xs text-green-700 font-medium">
+                        🎉 Testing: Only $1 to upgrade!
+                      </span>
+                    </div>
+                  )}
+
                   {/* Features */}
                   <ul className="space-y-3 mb-6">
                     {plan.features.map((feature, idx) => (
@@ -335,28 +461,16 @@ export default function Pricing() {
                       plan.popular
                         ? "bg-[#C4A84D] hover:bg-[#B39940] text-white"
                         : "bg-[#C4A84D]/10 hover:bg-[#C4A84D]/20 text-[#C4A84D] border border-[#C4A84D]/30"
-                    } ${
-                      key === "free_trial" && existingPlan 
-                        ? "opacity-50 cursor-not-allowed" 
-                        : ""
-                    } ${
-                      existingPlan === key
-                        ? "bg-gray-200 text-gray-500 cursor-default hover:bg-gray-200"
-                        : ""
-                    }`}
+                    } ${isButtonDisabled(key) ? "opacity-50 cursor-not-allowed" : ""}`}
                     onClick={() => handleSelectPlan(key)}
-                    disabled={selectingPlan !== null || (key === "free_trial" && !!existingPlan) || existingPlan === key}
+                    disabled={isButtonDisabled(key)}
                   >
                     {selectingPlan === key ? (
                       <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    ) : hasPendingPayment ? (
+                      <Clock className="w-4 h-4 mr-2" />
                     ) : null}
-                    {existingPlan === key 
-                      ? "Current Plan" 
-                      : key === "free_trial" && existingPlan 
-                        ? "Trial Used" 
-                        : existingPlan && key !== "free_trial" 
-                          ? "Upgrade" 
-                          : plan.cta}
+                    {getButtonText(key)}
                   </Button>
                 </div>
               );
@@ -390,6 +504,21 @@ export default function Pricing() {
           </p>
         </div>
       </footer>
+
+      {/* Payment Modal */}
+      {selectedPlanForPayment && user && (
+        <PaymentModal
+          isOpen={paymentModalOpen}
+          onClose={() => {
+            setPaymentModalOpen(false);
+            setSelectedPlanForPayment(null);
+          }}
+          planName={selectedPlanForPayment}
+          amount={planFeatures[selectedPlanForPayment as keyof typeof planFeatures]?.testPrice || 0}
+          userId={user.id}
+          onPaymentSubmitted={handlePaymentSubmitted}
+        />
+      )}
     </div>
   );
 }
