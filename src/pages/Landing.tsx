@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Sparkles, Brain, MessageSquare, Video, BarChart3, Check, LayoutGrid, Target, Users, Award, TrendingUp, Lightbulb, Shield, Globe, Zap } from "lucide-react";
+import heroEpImage from "@/assets/hero-ep-image.png";
 
 export default function Landing() {
   const dimensions = [
@@ -170,81 +171,101 @@ export default function Landing() {
         />
         
         <div className="container mx-auto px-4 py-16 sm:py-20 relative">
-          <div className="max-w-4xl mx-auto text-center space-y-6">
-            <div 
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium"
-              style={{ 
-                backgroundColor: 'hsl(40 40% 94%)', 
-                color: '#8B7355',
-                border: '1px solid hsl(40 30% 88%)'
-              }}
-            >
-              <Sparkles className="w-4 h-4" style={{ color: '#8B7355' }} />
-              AI-Powered Executive Presence Assessment
-            </div>
-            
-            <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight">
-              <span className="text-foreground">Enabling Leaders to</span>
-              <span className="block" style={{ color: '#D4A84B' }}>Deliver Business Results</span>
-            </h1>
-            
-            <p className="text-lg text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-              The first AI-powered assessment tool to measure a leader's ability to 
-              <strong className="text-foreground"> engage, align, inspire, and motivate others to act</strong>. 
-              Get research-backed insights on gravitas, communication, presence, and storytelling in minutes.
-            </p>
-            
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-              <Link to="/auth">
-                <Button 
-                  size="lg" 
-                  className="gap-2 px-8 rounded-lg"
-                  style={{ backgroundColor: '#D4A84B', color: '#1a1a2e' }}
-                >
-                  Start Your Assessment
-                  <ArrowRight className="w-4 h-4" />
-                </Button>
-              </Link>
-              <Link to="/pricing">
-                <Button 
-                  variant="outline" 
-                  size="lg" 
-                  className="px-8 rounded-lg"
-                  style={{ 
-                    borderColor: '#D4A84B', 
-                    color: '#D4A84B',
-                    backgroundColor: 'transparent'
-                  }}
-                >
-                  View Pricing
-                </Button>
-              </Link>
-            </div>
-            
-            {/* Stats */}
-            <div className="flex items-center justify-center pt-8">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            {/* Left Side - Content */}
+            <div className="space-y-6">
               <div 
-                className="inline-flex items-center gap-8 px-8 py-4 rounded-2xl"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium"
                 style={{ 
-                  backgroundColor: 'white',
-                  border: '1px solid hsl(220 13% 91%)',
-                  boxShadow: '0 4px 20px rgba(0,0,0,0.05)'
+                  backgroundColor: 'hsl(40 40% 94%)', 
+                  color: '#8B7355',
+                  border: '1px solid hsl(40 30% 88%)'
                 }}
               >
-                <div className="text-center">
-                  <div className="text-2xl font-semibold" style={{ color: '#D4A84B' }}>2-3min</div>
-                  <div className="text-xs text-muted-foreground">Analysis Time</div>
+                <Sparkles className="w-4 h-4" style={{ color: '#8B7355' }} />
+                AI-Powered Executive Presence Assessment
+              </div>
+              
+              <h1 className="font-display text-4xl sm:text-5xl lg:text-5xl font-bold leading-tight">
+                <span className="text-foreground">Enabling Leaders to</span>
+                <span className="block" style={{ color: '#D4A84B' }}>Deliver Business Results</span>
+              </h1>
+              
+              <p className="text-lg text-muted-foreground leading-relaxed">
+                The first AI-powered assessment tool to measure a leader's ability to 
+                <strong className="text-foreground"> engage, align, inspire, and motivate others to act</strong>. 
+                Get research-backed insights on gravitas, communication, presence, and storytelling in minutes.
+              </p>
+              
+              <div className="flex flex-col sm:flex-row items-start gap-4 pt-4">
+                <Link to="/auth">
+                  <Button 
+                    size="lg" 
+                    className="gap-2 px-8 rounded-lg"
+                    style={{ backgroundColor: '#D4A84B', color: '#1a1a2e' }}
+                  >
+                    Start Your Assessment
+                    <ArrowRight className="w-4 h-4" />
+                  </Button>
+                </Link>
+                <Link to="/pricing">
+                  <Button 
+                    variant="outline" 
+                    size="lg" 
+                    className="px-8 rounded-lg"
+                    style={{ 
+                      borderColor: '#D4A84B', 
+                      color: '#D4A84B',
+                      backgroundColor: 'transparent'
+                    }}
+                  >
+                    View Pricing
+                  </Button>
+                </Link>
+              </div>
+              
+              {/* Stats */}
+              <div className="pt-6">
+                <div 
+                  className="inline-flex items-center gap-8 px-8 py-4 rounded-2xl"
+                  style={{ 
+                    backgroundColor: 'white',
+                    border: '1px solid hsl(220 13% 91%)',
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.05)'
+                  }}
+                >
+                  <div className="text-center">
+                    <div className="text-2xl font-semibold" style={{ color: '#D4A84B' }}>2-3min</div>
+                    <div className="text-xs text-muted-foreground">Analysis Time</div>
+                  </div>
+                  <div className="w-px h-10 bg-border" />
+                  <div className="text-center">
+                    <div className="text-2xl font-semibold" style={{ color: '#D4A84B' }}>15+</div>
+                    <div className="text-xs text-muted-foreground">Leadership Facets</div>
+                  </div>
+                  <div className="w-px h-10 bg-border" />
+                  <div className="text-center">
+                    <div className="text-2xl font-semibold" style={{ color: '#D4A84B' }}>100%</div>
+                    <div className="text-xs text-muted-foreground">AI-Powered</div>
+                  </div>
                 </div>
-                <div className="w-px h-10 bg-border" />
-                <div className="text-center">
-                  <div className="text-2xl font-semibold" style={{ color: '#D4A84B' }}>15+</div>
-                  <div className="text-xs text-muted-foreground">Leadership Facets</div>
-                </div>
-                <div className="w-px h-10 bg-border" />
-                <div className="text-center">
-                  <div className="text-2xl font-semibold" style={{ color: '#D4A84B' }}>100%</div>
-                  <div className="text-xs text-muted-foreground">AI-Powered</div>
-                </div>
+              </div>
+            </div>
+
+            {/* Right Side - Image */}
+            <div className="flex justify-center lg:justify-end">
+              <div 
+                className="rounded-3xl overflow-hidden shadow-2xl"
+                style={{ 
+                  boxShadow: '0 25px 50px -12px rgba(212, 168, 75, 0.15)',
+                  border: '1px solid hsl(40 30% 90%)'
+                }}
+              >
+                <img 
+                  src={heroEpImage} 
+                  alt="Executive Presence - Confident business leader" 
+                  className="w-full max-w-md lg:max-w-lg object-cover"
+                />
               </div>
             </div>
           </div>
