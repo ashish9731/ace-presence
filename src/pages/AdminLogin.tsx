@@ -21,17 +21,49 @@ export default function AdminLogin() {
     }
   }, [user, isAdmin, authLoading, navigate]);
 
+  const ADMIN_EMAIL = "ankur@c2x.co.in";
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
+    // First check if email matches admin email
+    if (email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+      toast.error("Access Denied", {
+        description: "This email is not authorized for admin access.",
+      });
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      // Try to sign in first
+      const { error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       
-      if (error) throw error;
+      if (signInError) {
+        // If user doesn't exist, try to sign up (first time admin setup)
+        if (signInError.message.includes("Invalid login credentials")) {
+          const { error: signUpError } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              emailRedirectTo: `${window.location.origin}/admin/dashboard`
+            }
+          });
+          
+          if (signUpError) throw signUpError;
+          
+          toast.success("Admin account created!", {
+            description: "Please check your email for verification or try logging in again.",
+          });
+          setIsLoading(false);
+          return;
+        }
+        throw signInError;
+      }
       
       // Check if user is admin after login
       const { data: { user: loggedInUser } } = await supabase.auth.getUser();
@@ -44,7 +76,7 @@ export default function AdminLogin() {
         if (!isAdminUser) {
           await supabase.auth.signOut();
           toast.error("Access Denied", {
-            description: "You don't have admin privileges.",
+            description: "Admin role not assigned. Please contact support.",
           });
           return;
         }

@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
+const ADMIN_EMAIL = "ankur@c2x.co.in";
+
 export function useAdminAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -9,7 +11,13 @@ export function useAdminAuth() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const checkAdminRole = async (userId: string) => {
+    const checkAdminRole = async (userId: string, email: string | undefined) => {
+      // First check if email matches admin email
+      if (email !== ADMIN_EMAIL) {
+        return false;
+      }
+      
+      // Then verify with database
       const { data, error } = await supabase.rpc('has_role', {
         _user_id: userId,
         _role: 'admin'
@@ -23,13 +31,13 @@ export function useAdminAuth() {
     };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         
         if (session?.user) {
           setTimeout(async () => {
-            const adminStatus = await checkAdminRole(session.user.id);
+            const adminStatus = await checkAdminRole(session.user.id, session.user.email);
             setIsAdmin(adminStatus);
             setIsLoading(false);
           }, 0);
@@ -45,7 +53,7 @@ export function useAdminAuth() {
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        const adminStatus = await checkAdminRole(session.user.id);
+        const adminStatus = await checkAdminRole(session.user.id, session.user.email);
         setIsAdmin(adminStatus);
       }
       setIsLoading(false);
