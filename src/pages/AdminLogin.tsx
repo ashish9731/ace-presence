@@ -8,6 +8,9 @@ import { toast } from "sonner";
 import { ArrowLeft, Shield, Loader2 } from "lucide-react";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 
+// Hardcoded admin credentials - only this email can access admin
+const ADMIN_EMAIL = "ankur@c2x.co.in";
+
 export default function AdminLogin() {
   const navigate = useNavigate();
   const { user, isAdmin, isLoading: authLoading } = useAdminAuth();
@@ -21,72 +24,76 @@ export default function AdminLogin() {
     }
   }, [user, isAdmin, authLoading, navigate]);
 
-  const ADMIN_EMAIL = "ankur@c2x.co.in";
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // First check if email matches admin email
-    if (email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+    // Strict email validation - only admin email allowed
+    if (email.toLowerCase().trim() !== ADMIN_EMAIL.toLowerCase()) {
       toast.error("Access Denied", {
-        description: "This email is not authorized for admin access.",
+        description: "Only authorized admin email can access this portal.",
       });
       setIsLoading(false);
       return;
     }
 
     try {
-      // Try to sign in first
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email,
+      // Sign in with provided credentials
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email: email.toLowerCase().trim(),
         password,
       });
       
       if (signInError) {
-        // If user doesn't exist, try to sign up (first time admin setup)
-        if (signInError.message.includes("Invalid login credentials")) {
-          const { error: signUpError } = await supabase.auth.signUp({
-            email,
-            password,
-            options: {
-              emailRedirectTo: `${window.location.origin}/admin/dashboard`
-            }
-          });
-          
-          if (signUpError) throw signUpError;
-          
-          toast.success("Admin account created!", {
-            description: "Please check your email for verification or try logging in again.",
-          });
-          setIsLoading(false);
-          return;
-        }
-        throw signInError;
+        console.error('Sign in error:', signInError.message);
+        toast.error("Login Failed", {
+          description: "Invalid email or password. Please try again.",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      if (!data.user) {
+        toast.error("Login Failed", {
+          description: "No user returned. Please try again.",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Verify admin role in database
+      const { data: hasAdminRole, error: roleError } = await supabase.rpc('has_role', {
+        _user_id: data.user.id,
+        _role: 'admin'
+      });
+      
+      if (roleError) {
+        console.error('Role check error:', roleError);
+        await supabase.auth.signOut();
+        toast.error("Access Error", {
+          description: "Failed to verify admin role. Please contact support.",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      if (!hasAdminRole) {
+        await supabase.auth.signOut();
+        toast.error("Access Denied", {
+          description: "Admin role not assigned to this account.",
+        });
+        setIsLoading(false);
+        return;
       }
       
-      // Check if user is admin after login
-      const { data: { user: loggedInUser } } = await supabase.auth.getUser();
-      if (loggedInUser) {
-        const { data: isAdminUser } = await supabase.rpc('has_role', {
-          _user_id: loggedInUser.id,
-          _role: 'admin'
-        });
-        
-        if (!isAdminUser) {
-          await supabase.auth.signOut();
-          toast.error("Access Denied", {
-            description: "Admin role not assigned. Please contact support.",
-          });
-          return;
-        }
-        
-        toast.success("Welcome, Admin!");
-        navigate("/admin/dashboard", { replace: true });
-      }
+      toast.success("Welcome, Admin!", {
+        description: "Redirecting to dashboard...",
+      });
+      navigate("/admin/dashboard", { replace: true });
     } catch (error: any) {
-      toast.error("Login failed", {
-        description: error.message,
+      console.error('Admin login error:', error);
+      toast.error("Login Failed", {
+        description: error.message || "An unexpected error occurred.",
       });
     } finally {
       setIsLoading(false);
@@ -114,7 +121,7 @@ export default function AdminLogin() {
           </Link>
 
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'hsl(38 92% 50%)' }}>
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-primary">
               <Shield className="w-6 h-6 text-primary-foreground" />
             </div>
             <div>
@@ -125,11 +132,11 @@ export default function AdminLogin() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email Address</Label>
+              <Label htmlFor="email">Admin Email</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="admin@example.com"
+                placeholder="Enter admin email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="py-5"
@@ -155,7 +162,6 @@ export default function AdminLogin() {
             <Button
               type="submit"
               className="w-full py-5 text-base font-medium"
-              style={{ backgroundColor: 'hsl(38 92% 50%)', color: 'hsl(222 47% 11%)' }}
               disabled={isLoading}
             >
               {isLoading ? (
@@ -168,6 +174,10 @@ export default function AdminLogin() {
               )}
             </Button>
           </form>
+
+          <p className="mt-4 text-xs text-center text-muted-foreground">
+            This portal is restricted to authorized administrators only.
+          </p>
         </div>
       </div>
     </div>
