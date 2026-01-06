@@ -276,11 +276,12 @@ export default function Dashboard() {
     { subject: "Storytelling", value: parseFloat(avgStorytelling), fullMark: 100 },
   ];
 
+  // Score distribution shows the weight percentages (60%, 25%, 5%, 10%)
   const pieData = [
-    { name: "Gravitas", value: parseFloat(avgGravitas), color: COLORS.gravitas },
-    { name: "Communication", value: parseFloat(avgCommunication), color: COLORS.communication },
-    { name: "Presence", value: parseFloat(avgPresence), color: COLORS.presence },
-    { name: "Storytelling", value: parseFloat(avgStorytelling), color: COLORS.storytelling },
+    { name: "Gravitas", value: 60, color: COLORS.gravitas },
+    { name: "Communication", value: 25, color: COLORS.communication },
+    { name: "Presence", value: 5, color: COLORS.presence },
+    { name: "Storytelling", value: 10, color: COLORS.storytelling },
   ];
 
   const recentScoresData = data.slice(0, 5).reverse().map((a, index) => ({
