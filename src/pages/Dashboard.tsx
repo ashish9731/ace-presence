@@ -276,12 +276,12 @@ export default function Dashboard() {
     { subject: "Storytelling", value: parseFloat(avgStorytelling), fullMark: 100 },
   ];
 
-  // Score distribution shows the weight percentages (60%, 25%, 5%, 10%)
+  // Score distribution shows dynamic scores from KPIs
   const pieData = [
-    { name: "Gravitas", value: 60, color: COLORS.gravitas },
-    { name: "Communication", value: 25, color: COLORS.communication },
-    { name: "Presence", value: 5, color: COLORS.presence },
-    { name: "Storytelling", value: 10, color: COLORS.storytelling },
+    { name: "Gravitas", value: parseFloat(avgGravitas) || 0, color: COLORS.gravitas },
+    { name: "Communication", value: parseFloat(avgCommunication) || 0, color: COLORS.communication },
+    { name: "Presence", value: parseFloat(avgPresence) || 0, color: COLORS.presence },
+    { name: "Storytelling", value: parseFloat(avgStorytelling) || 0, color: COLORS.storytelling },
   ];
 
   const recentScoresData = data.slice(0, 5).reverse().map((a, index) => ({
