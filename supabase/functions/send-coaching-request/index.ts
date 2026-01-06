@@ -234,6 +234,25 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("Email sent successfully");
 
+    // Store the coaching request in the database with user_id
+    const { error: insertError } = await supabaseService
+      .from('coaching_requests')
+      .insert({
+        user_id: user.id,
+        name: trimmedName,
+        email: trimmedEmail,
+        primary_goal: trimmedGoal || null,
+        preferred_times: trimmedTimes || null,
+        notes: trimmedNotes || null,
+      });
+
+    if (insertError) {
+      console.error("Error storing coaching request:", insertError);
+      // Don't fail the request since email was sent successfully
+    } else {
+      console.log("Coaching request stored in database");
+    }
+
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
       headers: {
