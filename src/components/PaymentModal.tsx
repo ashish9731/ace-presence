@@ -7,7 +7,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Loader2, CreditCard, Smartphone, CheckCircle2, Clock, Sparkles, PartyPopper } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Loader2, CreditCard, Smartphone, CheckCircle2, Clock, Sparkles, PartyPopper, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -20,6 +22,9 @@ interface PaymentModalProps {
   onPaymentSubmitted: () => void;
 }
 
+type PaymentStep = "method" | "upi-select" | "upi-confirm" | "card-form" | "card-confirm";
+type UPIProvider = "gpay" | "paytm" | "phonepe";
+
 export function PaymentModal({ 
   isOpen, 
   onClose, 
@@ -28,10 +33,17 @@ export function PaymentModal({
   userId,
   onPaymentSubmitted 
 }: PaymentModalProps) {
-  const [paymentMethod, setPaymentMethod] = useState<"upi" | "card" | null>(null);
+  const [step, setStep] = useState<PaymentStep>("method");
+  const [selectedUPI, setSelectedUPI] = useState<UPIProvider | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+  
+  // Card form state
+  const [cardNumber, setCardNumber] = useState("");
+  const [cardName, setCardName] = useState("");
+  const [expiryDate, setExpiryDate] = useState("");
+  const [cvv, setCvv] = useState("");
 
   useEffect(() => {
     if (submitted) {
@@ -41,9 +53,17 @@ export function PaymentModal({
     }
   }, [submitted]);
 
-  const handleSubmitPayment = async () => {
-    if (!paymentMethod) return;
+  const resetState = () => {
+    setStep("method");
+    setSelectedUPI(null);
+    setSubmitted(false);
+    setCardNumber("");
+    setCardName("");
+    setExpiryDate("");
+    setCvv("");
+  };
 
+  const handleSubmitPayment = async (method: string) => {
     setSubmitting(true);
     try {
       const { error } = await supabase.from("payments").insert({
@@ -51,7 +71,7 @@ export function PaymentModal({
         plan_name: planName,
         amount: amount,
         currency: "USD",
-        payment_method: paymentMethod,
+        payment_method: method,
         status: "pending",
       });
 
@@ -65,8 +85,7 @@ export function PaymentModal({
       setTimeout(() => {
         onPaymentSubmitted();
         onClose();
-        setSubmitted(false);
-        setPaymentMethod(null);
+        resetState();
       }, 4000);
     } catch (error: any) {
       toast.error("Failed to submit payment", { description: error.message });
@@ -77,11 +96,42 @@ export function PaymentModal({
 
   const handleClose = () => {
     if (!submitting) {
-      setPaymentMethod(null);
-      setSubmitted(false);
+      resetState();
       onClose();
     }
   };
+
+  const formatCardNumber = (value: string) => {
+    const v = value.replace(/\s+/g, "").replace(/[^0-9]/gi, "");
+    const matches = v.match(/\d{4,16}/g);
+    const match = (matches && matches[0]) || "";
+    const parts = [];
+    for (let i = 0, len = match.length; i < len; i += 4) {
+      parts.push(match.substring(i, i + 4));
+    }
+    return parts.length ? parts.join(" ") : v;
+  };
+
+  const formatExpiry = (value: string) => {
+    const v = value.replace(/\s+/g, "").replace(/[^0-9]/gi, "");
+    if (v.length >= 2) {
+      return v.substring(0, 2) + "/" + v.substring(2, 4);
+    }
+    return v;
+  };
+
+  const isCardFormValid = () => {
+    return cardNumber.replace(/\s/g, "").length >= 16 && 
+           cardName.length >= 3 && 
+           expiryDate.length === 5 && 
+           cvv.length >= 3;
+  };
+
+  const upiProviders = [
+    { id: "gpay" as UPIProvider, name: "Google Pay", color: "from-blue-500 to-blue-600", icon: "G" },
+    { id: "paytm" as UPIProvider, name: "Paytm", color: "from-sky-400 to-sky-500", icon: "P" },
+    { id: "phonepe" as UPIProvider, name: "PhonePe", color: "from-purple-500 to-purple-600", icon: "Ph" },
+  ];
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -157,7 +207,7 @@ export function PaymentModal({
               <div className="flex items-center justify-between">
                 <div>
                   <span className="text-sm text-gray-600 block">Amount to pay</span>
-                  <span className="text-xs text-gray-400">(Test mode: $1)</span>
+                  <span className="text-xs text-gray-400">(Mock payment for testing)</span>
                 </div>
                 <div className="text-right">
                   <span className="text-4xl font-bold bg-gradient-to-r from-[#C4A84D] to-[#B39940] bg-clip-text text-transparent">${amount}</span>
@@ -166,13 +216,13 @@ export function PaymentModal({
               </div>
             </div>
 
-            {/* Payment Method Selection */}
-            {!paymentMethod ? (
+            {/* Step: Payment Method Selection */}
+            {step === "method" && (
               <div className="space-y-4">
                 <p className="text-sm font-semibold text-gray-700 mb-3">Select payment method:</p>
                 
                 <button
-                  onClick={() => setPaymentMethod("upi")}
+                  onClick={() => setStep("upi-select")}
                   className="w-full flex items-center gap-4 p-5 border-2 border-gray-100 rounded-xl hover:border-[#C4A84D] hover:bg-gradient-to-r hover:from-[#C4A84D]/5 hover:to-amber-50/30 transition-all group shadow-sm hover:shadow-md"
                 >
                   <div className="w-14 h-14 bg-gradient-to-br from-[#C4A84D] to-[#B39940] rounded-xl flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
@@ -186,63 +236,95 @@ export function PaymentModal({
                 </button>
 
                 <button
-                  disabled
-                  className="w-full flex items-center gap-4 p-5 border-2 border-gray-100 rounded-xl opacity-50 cursor-not-allowed"
+                  onClick={() => setStep("card-form")}
+                  className="w-full flex items-center gap-4 p-5 border-2 border-gray-100 rounded-xl hover:border-[#C4A84D] hover:bg-gradient-to-r hover:from-[#C4A84D]/5 hover:to-amber-50/30 transition-all group shadow-sm hover:shadow-md"
                 >
-                  <div className="w-14 h-14 bg-gray-100 rounded-xl flex items-center justify-center">
-                    <CreditCard className="w-7 h-7 text-gray-400" />
+                  <div className="w-14 h-14 bg-gradient-to-br from-gray-600 to-gray-800 rounded-xl flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
+                    <CreditCard className="w-7 h-7 text-white" />
                   </div>
                   <div className="text-left flex-1">
-                    <p className="font-semibold text-gray-400 text-lg">Card Payment</p>
-                    <p className="text-sm text-gray-400">Visa, Mastercard, Amex</p>
+                    <p className="font-semibold text-gray-900 text-lg">Card Payment</p>
+                    <p className="text-sm text-gray-500">Visa, Mastercard, Amex, RuPay</p>
                   </div>
-                  <div className="bg-gray-100 px-3 py-1 rounded-full text-xs text-gray-500">Coming Soon</div>
+                  <div className="text-gray-400 font-medium text-sm">All cards</div>
                 </button>
               </div>
-            ) : paymentMethod === "upi" ? (
-              <div className="space-y-5">
+            )}
+
+            {/* Step: UPI Provider Selection */}
+            {step === "upi-select" && (
+              <div className="space-y-4">
                 <button
-                  onClick={() => setPaymentMethod(null)}
+                  onClick={() => setStep("method")}
                   className="text-sm text-[#C4A84D] hover:underline font-medium flex items-center gap-1"
                 >
-                  ← Back to payment methods
+                  <ArrowLeft className="w-4 h-4" /> Back to payment methods
+                </button>
+
+                <p className="text-sm font-semibold text-gray-700">Select UPI app:</p>
+                
+                <div className="grid grid-cols-3 gap-3">
+                  {upiProviders.map((provider) => (
+                    <button
+                      key={provider.id}
+                      onClick={() => {
+                        setSelectedUPI(provider.id);
+                        setStep("upi-confirm");
+                      }}
+                      className="flex flex-col items-center gap-2 p-4 border-2 border-gray-100 rounded-xl hover:border-[#C4A84D] hover:shadow-md transition-all"
+                    >
+                      <div className={`w-14 h-14 bg-gradient-to-br ${provider.color} rounded-xl flex items-center justify-center shadow-md`}>
+                        <span className="text-white font-bold text-lg">{provider.icon}</span>
+                      </div>
+                      <span className="text-sm font-medium text-gray-700">{provider.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Step: UPI Confirmation */}
+            {step === "upi-confirm" && selectedUPI && (
+              <div className="space-y-5">
+                <button
+                  onClick={() => setStep("upi-select")}
+                  className="text-sm text-[#C4A84D] hover:underline font-medium flex items-center gap-1"
+                >
+                  <ArrowLeft className="w-4 h-4" /> Back to UPI apps
                 </button>
 
                 <div className="text-center">
-                  <p className="text-sm font-semibold text-gray-700 mb-4">
-                    Scan QR Code with Google Pay
-                  </p>
+                  <div className={`w-20 h-20 mx-auto bg-gradient-to-br ${upiProviders.find(p => p.id === selectedUPI)?.color} rounded-2xl flex items-center justify-center shadow-lg mb-4`}>
+                    <span className="text-white font-bold text-2xl">
+                      {upiProviders.find(p => p.id === selectedUPI)?.icon}
+                    </span>
+                  </div>
                   
-                  <div className="bg-white border-4 border-[#C4A84D]/20 rounded-2xl p-6 inline-block shadow-xl hover:shadow-2xl transition-shadow">
-                    <img
-                      src="/gpay-qr.png"
-                      alt="Google Pay QR Code"
-                      className="w-56 h-56 mx-auto object-contain"
-                    />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    {upiProviders.find(p => p.id === selectedUPI)?.name} Payment
+                  </h3>
+                  
+                  <div className="bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-xl p-4 mb-4">
+                    <p className="text-sm text-amber-700">
+                      <Clock className="w-4 h-4 inline mr-2" />
+                      Open {upiProviders.find(p => p.id === selectedUPI)?.name} app and complete the payment of <strong>${amount}</strong>
+                    </p>
                   </div>
 
-                  <div className="mt-5 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-xl p-4">
-                    <div className="flex items-center justify-center gap-2 text-amber-700">
-                      <Clock className="w-5 h-5" />
-                      <span className="font-medium">After payment, click confirm below</span>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 flex items-center justify-center gap-4 text-sm text-gray-500">
-                    <span>Amount: <span className="font-bold text-[#C4A84D]">${amount}</span></span>
-                    <span className="w-1 h-1 bg-gray-300 rounded-full" />
-                    <span>Plan: <span className="font-bold text-gray-700">{planName}</span></span>
+                  <div className="bg-gray-50 rounded-xl p-4 mb-4">
+                    <p className="text-xs text-gray-500 mb-1">UPI ID (Mock)</p>
+                    <p className="font-mono text-gray-800 font-medium">epquotient@{selectedUPI}</p>
                   </div>
 
                   <Button
-                    onClick={handleSubmitPayment}
+                    onClick={() => handleSubmitPayment(`upi_${selectedUPI}`)}
                     disabled={submitting}
-                    className="w-full mt-6 h-14 bg-gradient-to-r from-[#C4A84D] to-[#B39940] hover:from-[#B39940] hover:to-[#A38830] text-white font-semibold text-lg shadow-lg hover:shadow-xl transition-all"
+                    className="w-full h-14 bg-gradient-to-r from-[#C4A84D] to-[#B39940] hover:from-[#B39940] hover:to-[#A38830] text-white font-semibold text-lg shadow-lg hover:shadow-xl transition-all"
                   >
                     {submitting ? (
                       <>
                         <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                        Submitting...
+                        Processing...
                       </>
                     ) : (
                       <>
@@ -253,7 +335,99 @@ export function PaymentModal({
                   </Button>
                 </div>
               </div>
-            ) : null}
+            )}
+
+            {/* Step: Card Form */}
+            {step === "card-form" && (
+              <div className="space-y-4">
+                <button
+                  onClick={() => setStep("method")}
+                  className="text-sm text-[#C4A84D] hover:underline font-medium flex items-center gap-1"
+                >
+                  <ArrowLeft className="w-4 h-4" /> Back to payment methods
+                </button>
+
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="cardNumber" className="text-sm font-medium text-gray-700">Card Number</Label>
+                    <Input
+                      id="cardNumber"
+                      placeholder="1234 5678 9012 3456"
+                      value={cardNumber}
+                      onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
+                      maxLength={19}
+                      className="mt-1"
+                    />
+                    <div className="flex gap-1 mt-2">
+                      <div className="w-8 h-5 bg-blue-600 rounded text-[8px] text-white flex items-center justify-center font-bold">VISA</div>
+                      <div className="w-8 h-5 bg-red-500 rounded text-[8px] text-white flex items-center justify-center font-bold">MC</div>
+                      <div className="w-8 h-5 bg-blue-400 rounded text-[8px] text-white flex items-center justify-center font-bold">AMEX</div>
+                      <div className="w-8 h-5 bg-green-600 rounded text-[8px] text-white flex items-center justify-center font-bold">RuPay</div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="cardName" className="text-sm font-medium text-gray-700">Name on Card</Label>
+                    <Input
+                      id="cardName"
+                      placeholder="John Doe"
+                      value={cardName}
+                      onChange={(e) => setCardName(e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="expiry" className="text-sm font-medium text-gray-700">Expiry Date</Label>
+                      <Input
+                        id="expiry"
+                        placeholder="MM/YY"
+                        value={expiryDate}
+                        onChange={(e) => setExpiryDate(formatExpiry(e.target.value))}
+                        maxLength={5}
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="cvv" className="text-sm font-medium text-gray-700">CVV</Label>
+                      <Input
+                        id="cvv"
+                        type="password"
+                        placeholder="•••"
+                        value={cvv}
+                        onChange={(e) => setCvv(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                        maxLength={4}
+                        className="mt-1"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-green-600" />
+                    <span className="text-sm text-green-700">Your payment is secured with 256-bit encryption</span>
+                  </div>
+
+                  <Button
+                    onClick={() => handleSubmitPayment("card")}
+                    disabled={submitting || !isCardFormValid()}
+                    className="w-full h-14 bg-gradient-to-r from-[#C4A84D] to-[#B39940] hover:from-[#B39940] hover:to-[#A38830] text-white font-semibold text-lg shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
+                  >
+                    {submitting ? (
+                      <>
+                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <CreditCard className="w-5 h-5 mr-2" />
+                        Pay ${amount}
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
           </>
         )}
       </DialogContent>
