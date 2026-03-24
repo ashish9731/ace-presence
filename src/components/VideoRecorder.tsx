@@ -21,7 +21,7 @@ export function VideoRecorder({ onVideoRecorded, onCancel }: VideoRecorderProps)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const MAX_DURATION = 300; // 5 minutes max
   const RECOMMENDED_DURATION = 180; // 3 minutes recommended

@@ -130,7 +130,7 @@ export function BoardroomSimulator() {
   }, [isPreparing, prepTime]);
 
   useEffect(() => {
-    let timer: NodeJS.Timeout;
+    let timer: ReturnType<typeof setInterval>;
     if (isRecording && selectedScenario) {
       timer = setInterval(() => {
         setRecordingTime((t) => {
