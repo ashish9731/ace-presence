@@ -117,7 +117,7 @@ export function BoardroomSimulator() {
   const streamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
-    let timer: NodeJS.Timeout;
+    let timer: ReturnType<typeof setInterval>;
     if (isPreparing && prepTime > 0) {
       timer = setInterval(() => {
         setPrepTime((t) => t - 1);
@@ -130,7 +130,7 @@ export function BoardroomSimulator() {
   }, [isPreparing, prepTime]);
 
   useEffect(() => {
-    let timer: NodeJS.Timeout;
+    let timer: ReturnType<typeof setInterval>;
     if (isRecording && selectedScenario) {
       timer = setInterval(() => {
         setRecordingTime((t) => {
